@@ -1,0 +1,29 @@
+@View {
+  const { content } = props || {};
+  
+  return div([
+    div([
+      // Docs Sidebar
+      div([
+        h3("Documentation", { className: "font-bold text-gray-900 mb-6 px-4" }),
+        
+        div([
+          div("GETTING STARTED", { className: "text-xs font-bold text-gray-500 px-4 mb-2 mt-6" }),
+          a("Introduction", { href: "/docs", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" }),
+          a("Installation", { href: "/docs/installation", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" }),
+          a("Quick Start", { href: "/docs/quick-start", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" }),
+          
+          div("CORE CONCEPTS", { className: "text-xs font-bold text-gray-500 px-4 mb-2 mt-6" }),
+          a("Routing", { href: "/docs/routing", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" }),
+          a("Server Actions", { href: "/docs/server-actions", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" }),
+          a("Components", { href: "/docs/components", className: "block px-4 py-1.5 text-gray-600 hover:text-blue-600 text-sm" })
+        ], { className: "border-l border-gray-100 ml-4" })
+      ], { className: "w-64 py-8 hidden lg:block fixed h-screen overflow-y-auto" }),
+      
+      // Content
+      div([
+        content
+      ], { className: "lg:ml-64 flex-1 py-12 px-8 max-w-4xl" })
+    ], { className: "flex max-w-7xl mx-auto" })
+  ]);
+}

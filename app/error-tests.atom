@@ -1,0 +1,76 @@
+@Title "Error Testing - ATOM Showcase"
+@Description "Test framework error handling capabilities."
+
+@Flow Actions {
+  secure_throwError: async function() {
+    throw new Error("This is a manually triggered server error.");
+  },
+  
+  secure_validateInput: async function(data) {
+    if (!data || data.length < 5) {
+      throw new Error("Input too short (min 5 chars)");
+    }
+    return { success: true };
+  }
+};
+
+@View {
+  const [error, setError] = useState(null);
+  const [inputVal, setInputVal] = useState("");
+  
+  const triggerError = async () => {
+    setError(null);
+    try {
+      await Actions.secure_throwError();
+    } catch (err) {
+      setError(err);
+    }
+  };
+  
+  const testValidation = async () => {
+    setError(null);
+    try {
+      await Actions.secure_validateInput(inputVal);
+      alert("Success!");
+    } catch (err) {
+      setError(err);
+    }
+  };
+
+  return div([
+    div([
+      h1("Error Handling Tests", { className: "text-4xl font-bold mb-8" }),
+      
+      div([
+        h2("1. Server Action Errors", { className: "text-2xl font-bold mb-4" }),
+        p("Click the button below to trigger a server-side error and see how it's handled.", { className: "mb-4 text-gray-600" }),
+        button("Trigger Server Error", { 
+          className: "bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition",
+          onclick: triggerError
+        })
+      ], { className: "bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8" }),
+      
+      div([
+        h2("2. Input Validation", { className: "text-2xl font-bold mb-4" }),
+        div([
+          input({ 
+            value: inputVal,
+            placeholder: "Type something (min 5 chars)...",
+            className: "border p-2 rounded mr-4 w-64",
+            oninput: (e) => setInputVal(e.target.value)
+          }),
+          button("Validate", { 
+            className: "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition",
+            onclick: testValidation
+          })
+        ], { className: "flex items-center" })
+      ], { className: "bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8" }),
+      
+      div([
+        h2("3. Error Display Component", { className: "text-2xl font-bold mb-4" }),
+        error ? ErrorDisplay({ error }) : div("No errors yet.", { className: "text-gray-400 italic" })
+      ], { className: "bg-white p-8 rounded-xl shadow-sm border border-gray-100" })
+      
+    ], { className: "max-w-4xl mx-auto px-6 py-12" })
+  ], { className: "bg-gray-50 min-h-screen" });
+}

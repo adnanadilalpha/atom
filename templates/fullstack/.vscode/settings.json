@@ -1,0 +1,10 @@
+{
+  "files.associations": {
+    "*.atom": "javascriptreact"
+  },
+  "emmet.includeLanguages": {
+    "javascriptreact": "javascriptreact"
+  },
+  "javascript.validate.enable": false,
+  "typescript.validate.enable": false
+}

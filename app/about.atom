@@ -1,0 +1,56 @@
+@Title "About Us - ATOM Showcase"
+@Description "Learn about the team behind the ATOM Framework showcase project."
+@Static
+
+@View {
+  const team = [
+    { name: "Alex Developer", role: "Lead Architect", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80", bio: "Obsessed with performance and compiler optimizations." },
+    { name: "Sarah Designer", role: "UI/UX Lead", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80", bio: "Making complex systems look simple and beautiful." },
+    { name: "Mike Engineer", role: "Backend Specialist", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80", bio: "Scaling servers to handle millions of requests." }
+  ];
+
+  return div([
+    // Hero
+    section([
+      div([
+        h1("About The Team", { className: "text-5xl font-black mb-6 tracking-tight" }),
+        p("We are a passionate group of developers building the next generation of web tools.", { className: "text-xl text-gray-600 max-w-2xl mx-auto" })
+      ], { className: "text-center py-20" })
+    ], { className: "bg-gray-50" }),
+
+    // Team Grid
+    section([
+      div(team.map(member => 
+        div([
+          Image({ 
+            src: member.image, 
+            alt: member.name, 
+            width: 400, 
+            height: 400, 
+            className: "w-full h-64 object-cover grayscale hover:grayscale-0 transition duration-500" 
+          }),
+          div([
+            h3(member.name, { className: "text-xl font-bold mb-1" }),
+            p(member.role, { className: "text-blue-600 font-medium text-sm uppercase tracking-wider mb-3" }),
+            p(member.bio, { className: "text-gray-600 text-sm leading-relaxed" })
+          ], { className: "p-6" })
+        ], { className: "bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 group" })
+      ), { className: "grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6 -mt-10" })
+    ], { className: "pb-24" }),
+
+    // Stats
+    section([
+      div([
+        div([
+          h2("Global Reach", { className: "text-3xl font-bold mb-8 text-center" }),
+          div([
+            StatusCard({ label: "Downloads", value: "2M+" }),
+            StatusCard({ label: "Contributors", value: "150+" }),
+            StatusCard({ label: "Countries", value: "85" }),
+            StatusCard({ label: "Uptime", value: "99.9%" })
+          ], { className: "grid grid-cols-2 md:grid-cols-4 gap-6" })
+        ], { className: "max-w-6xl mx-auto px-6" })
+      ], { className: "py-24 bg-white" })
+    ])
+  ]);
+}

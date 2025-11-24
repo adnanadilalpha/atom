@@ -1,0 +1,9 @@
+@Flow Actions {
+  GET: async function() {
+    return {
+      users: 1000,
+      visits: 5000,
+      revenue: 25000
+    };
+  }
+};

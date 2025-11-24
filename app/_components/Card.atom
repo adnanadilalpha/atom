@@ -1,0 +1,7 @@
+@View {
+  const safeProps = props || {};
+  return div([
+    h3(safeProps.title, { className: "text-xl font-bold mb-2" }),
+    p(safeProps.children, { className: "text-gray-600" })
+  ], { className: "bg-white p-6 rounded-xl shadow border border-gray-100" });
+}

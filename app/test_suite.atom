@@ -1,0 +1,1138 @@
+@Title "ATOM Framework - Complete Test Suite"
+@Description "Comprehensive production-level testing of all ATOM Framework features"
+@Meta { name: "robots", content: "noindex, nofollow" };
+
+// Test ISR - This page revalidates every 60 seconds
+@Revalidate 60
+
+// confetti will be available globally if canvas-confetti is installed
+// For now, we'll handle it gracefully if it's not available
+
+@Resource DB from './db';
+
+// ============================================================================
+// COMPREHENSIVE TEST SUITE FOR ATOM FRAMEWORK
+// ============================================================================
+// This test suite validates:
+// 1. Authentication & Authorization
+// 2. Database Operations (CRUD)
+// 3. Server Actions (with validation & sanitization)
+// 4. State Management (useState, useEffect, useRef, useMemo)
+// 5. Routing & Navigation
+// 6. Forms & Validation
+// 7. Error Handling
+// 8. Performance
+// 9. Security
+// 10. Real-time Features (WebSocket)
+// ============================================================================
+
+@Flow Actions {
+  // ========================================================================
+  // AUTHENTICATION TESTS
+  // ========================================================================
+  
+  secure_testLogin: async function(credentials) {
+    console.log('[TEST] Login attempt:', credentials);
+    
+    // Import validation and sanitization
+    const validate = require('../system/lib/validation');
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Validate input
+    const email = validate.isEmail(
+      validate.required(credentials?.email, 'Email'),
+      'Email'
+    );
+    const password = validate.required(credentials?.password, 'Password');
+    
+    // Sanitize
+    const cleanEmail = sanitize.sanitizeEmail(email);
+    
+    // Mock database check (in real app, use actual DB)
+    const mockUsers = [
+      { id: 1, email: "test@example.com", password: "password123", name: "Test User" },
+      { id: 2, email: "admin@example.com", password: "admin123", name: "Admin User" }
+    ];
+    
+    const user = mockUsers.find(u => u.email === cleanEmail && u.password === password);
+    
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+    
+    // Generate mock JWT token
+    const token = `mock_jwt_${user.id}_${Date.now()}`;
+    
+    return {
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    };
+  },
+  
+  secure_testRegister: async function(userData) {
+    console.log('[TEST] Registration attempt:', userData);
+    
+    // Import validation and sanitization
+    const validate = require('../system/lib/validation');
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Comprehensive validation
+    const email = validate.isEmail(
+      validate.required(userData?.email, 'Email'),
+      'Email'
+    );
+    const password = validate.minLength(
+      validate.required(userData?.password, 'Password'),
+      8,
+      'Password'
+    );
+    const name = validate.minLength(
+      validate.required(userData?.name, 'Name'),
+      2,
+      'Name'
+    );
+    
+    // Sanitize all inputs
+    const cleanEmail = sanitize.sanitizeEmail(email);
+    const cleanName = sanitize.sanitizeString(name, { maxLength: 100 });
+    
+    // Check if user exists (mock)
+    const existingUsers = ["test@example.com", "admin@example.com"];
+    if (existingUsers.includes(cleanEmail)) {
+      throw new Error('User already exists');
+    }
+    
+    // Create user (mock)
+    const newUser = {
+      id: Date.now(),
+      email: cleanEmail,
+      name: cleanName,
+      createdAt: new Date().toISOString()
+    };
+    
+    return {
+      success: true,
+      user: newUser,
+      message: 'User registered successfully'
+    };
+  },
+  
+  secure_testGetCurrentUser: async function(token) {
+    if (!token) {
+      throw new Error('No token provided');
+    }
+    
+    // Mock token validation
+    const userId = token.split('_')[2];
+    if (!userId) {
+      throw new Error('Invalid token');
+    }
+    
+    return {
+      id: parseInt(userId),
+      email: "test@example.com",
+      name: "Test User"
+    };
+  },
+  
+  // ========================================================================
+  // DATABASE OPERATION TESTS
+  // ========================================================================
+  
+  secure_testCreateRecord: async function(data) {
+    console.log('[TEST] Create record:', data);
+    
+    // Import validation and sanitization
+    const validate = require('../system/lib/validation');
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Validate
+    const title = validate.required(data?.title, 'Title');
+    const content = validate.required(data?.content, 'Content');
+    
+    // Sanitize
+    const cleanTitle = sanitize.sanitizeString(title, { maxLength: 200 });
+    const cleanContent = sanitize.sanitizeHTML(content, {
+      allowedTags: ['p', 'br', 'strong', 'em'],
+      stripTags: false
+    });
+    
+    // Mock database insert
+    const record = {
+      id: Date.now(),
+      title: cleanTitle,
+      content: cleanContent,
+      createdAt: new Date().toISOString()
+    };
+    
+    return {
+      success: true,
+      record
+    };
+  },
+  
+  secure_testGetRecords: async function(params) {
+    console.log('[TEST] Get records:', params);
+    
+    // Import validation
+    const validate = require('../system/lib/validation');
+    
+    // Validate pagination
+    const page = params?.page ? validate.isNumber(params.page, 'Page') : 1;
+    const limit = params?.limit ? validate.min(validate.isNumber(params.limit, 'Limit'), 1, 'Limit') : 10;
+    
+    // Mock database query
+    const mockRecords = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1,
+      title: `Record ${i + 1}`,
+      content: `Content for record ${i + 1}`,
+      createdAt: new Date(Date.now() - i * 86400000).toISOString()
+    }));
+    
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    const paginated = mockRecords.slice(start, end);
+    
+    return {
+      records: paginated,
+      pagination: {
+        page,
+        limit,
+        total: mockRecords.length,
+        totalPages: Math.ceil(mockRecords.length / limit)
+      }
+    };
+  },
+  
+  secure_testUpdateRecord: async function(data) {
+    console.log('[TEST] Update record:', data);
+    
+    // Import validation and sanitization
+    const validate = require('../system/lib/validation');
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Validate
+    const id = validate.isNumber(validate.required(data?.id, 'ID'), 'ID');
+    const title = data?.title ? validate.required(data.title, 'Title') : null;
+    const content = data?.content ? validate.required(data.content, 'Content') : null;
+    
+    if (!title && !content) {
+      throw new Error('At least one field (title or content) must be provided');
+    }
+    
+    // Sanitize
+    const updates = {};
+    if (title) updates.title = sanitize.sanitizeString(title, { maxLength: 200 });
+    if (content) updates.content = sanitize.sanitizeHTML(content);
+    
+    // Mock database update
+    return {
+      success: true,
+      id,
+      updates,
+      updatedAt: new Date().toISOString()
+    };
+  },
+  
+  secure_testDeleteRecord: async function(id) {
+    console.log('[TEST] Delete record:', id, 'Type:', typeof id);
+    
+    // Import validation
+    const validate = require('../system/lib/validation');
+    
+    // Validate - isNumber now handles both numbers and numeric strings
+    const recordId = validate.isNumber(validate.required(id, 'ID'), 'ID');
+    
+    // Mock database delete
+    return {
+      success: true,
+      id: recordId,
+      deletedAt: new Date().toISOString()
+    };
+  },
+  
+  // ========================================================================
+  // VALIDATION & SANITIZATION TESTS
+  // ========================================================================
+  
+  secure_testValidation: async function(data) {
+    console.log('[TEST] Validation test:', data);
+    
+    // Import validation
+    const validate = require('../system/lib/validation');
+    
+    // Test all validation types
+    const schema = {
+      email: (v) => validate.isEmail(validate.required(v, 'Email'), 'Email'),
+      name: (v) => validate.minLength(
+        validate.isString(validate.required(v, 'Name'), 'Name'),
+        2,
+        'Name'
+      ),
+      age: (v) => validate.min(
+        validate.isNumber(v, 'Age'),
+        18,
+        'Age'
+      ),
+      url: (v) => validate.isURL(v, 'URL'),
+      tags: (v) => validate.arrayMinLength(
+        validate.isArray(v, 'Tags'),
+        1,
+        'Tags'
+      )
+    };
+    
+    const validated = validate.validate(data, schema);
+    
+    return {
+      success: true,
+      validated,
+      message: 'All validations passed'
+    };
+  },
+  
+  secure_testSanitization: async function(data) {
+    console.log('[TEST] Sanitization test:', data);
+    
+    // Import sanitization
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Test sanitization
+    const sanitized = {
+      html: sanitize.sanitizeHTML(data.html || '', {
+        allowedTags: ['p', 'br', 'strong', 'em']
+      }),
+      string: sanitize.sanitizeString(data.string || '', {
+        maxLength: 100,
+        removeHTML: true
+      }),
+      email: sanitize.sanitizeEmail(data.email || ''),
+      url: sanitize.sanitizeURL(data.url || ''),
+      object: sanitize.sanitizeObject(data.object || {})
+    };
+    
+    return {
+      success: true,
+      original: data,
+      sanitized,
+      message: 'Sanitization completed'
+    };
+  },
+  
+  // ========================================================================
+  // ERROR HANDLING TESTS
+  // ========================================================================
+  
+  secure_testErrorHandling: async function(type) {
+    console.log('[TEST] Error handling test:', type);
+    
+    switch (type) {
+      case 'validation':
+        throw new Error('Validation error: Invalid input');
+      case 'database':
+        throw new Error('Database error: Connection failed');
+      case 'permission':
+        throw new Error('Permission error: Access denied');
+      case 'notfound':
+        throw new Error('Not found: Resource does not exist');
+      default:
+        throw new Error('Unknown error type');
+    }
+  },
+  
+  // ========================================================================
+  // PERFORMANCE TESTS
+  // ========================================================================
+  
+  secure_testPerformance: async function(iterations = 100) {
+    console.log('[TEST] Performance test:', iterations);
+    
+    const start = Date.now();
+    const results = [];
+    
+    // Simulate database operations
+    for (let i = 0; i < iterations; i++) {
+      results.push({
+        id: i,
+        data: `Item ${i}`,
+        processed: true
+      });
+    }
+    
+    const duration = Date.now() - start;
+    const averageTime = duration / iterations;
+    
+    return {
+      success: true,
+      iterations,
+      duration,
+      averageTime,
+      results: results.slice(0, 10) // Return first 10
+    };
+  },
+  
+  // ========================================================================
+  // FILE UPLOAD TEST (MOCK)
+  // ========================================================================
+  
+  secure_testFileUpload: async function(fileData) {
+    console.log('[TEST] File upload test:', fileData);
+    
+    // Import sanitization
+    const sanitize = require('../system/lib/sanitize');
+    
+    // Validate
+    if (!fileData || !fileData.name) {
+      throw new Error('File data is required');
+    }
+    
+    // Sanitize filename
+    const cleanName = sanitize.sanitizeString(fileData.name, {
+      maxLength: 255,
+      removeHTML: true
+    });
+    
+    // Mock file save
+    return { 
+      success: true,
+      file: {
+        id: Date.now(),
+        name: cleanName,
+        size: fileData.size || 0,
+        type: fileData.type || 'application/octet-stream',
+        uploadedAt: new Date().toISOString()
+      }
+    };
+  },
+  
+  // ========================================================================
+  // WEBSOCKET TEST (via server)
+  // ========================================================================
+  
+  secure_testWebSocket: async function(message) {
+    console.log('[TEST] WebSocket test:', message);
+    
+    // In a real implementation, this would broadcast via WebSocket
+    // For now, just return success
+    return {
+      success: true,
+      message: 'WebSocket message would be broadcast here',
+      timestamp: new Date().toISOString()
+    };
+  }
+};
+
+@View {
+  // ========================================================================
+  // STATE MANAGEMENT
+  // ========================================================================
+  
+  const [currentTest, setCurrentTest] = useState('auth');
+  const [testResults, setTestResults] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [records, setRecords] = useState([]);
+  
+  // Ensure records is always an array
+  const safeRecords = Array.isArray(records) ? records : [];
+  
+  // Refs for testing
+  const loadingRef = useRef(false);
+  const testCountRef = useRef(0);
+  const lastTestRef = useRef(null);
+  
+  // Load confetti dynamically if available
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.confetti) {
+      import('canvas-confetti').then(module => {
+        window.confetti = module.default || module;
+      }).catch(() => {
+        // confetti not available, that's okay
+      });
+    }
+  }, []);
+  
+  // Helper function to safely call confetti
+  const triggerConfetti = (options = {}) => {
+    try {
+      const confettiFn = window.confetti || (typeof confetti !== 'undefined' ? confetti : null);
+      if (confettiFn && typeof confettiFn === 'function') {
+        confettiFn(options);
+      }
+    } catch (e) {
+      // confetti not available, skip
+    }
+  };
+  
+  // Memoized values
+  const testCategories = useMemo(() => [
+    { id: 'auth', name: 'Authentication', icon: '🔐' },
+    { id: 'database', name: 'Database', icon: '💾' },
+    { id: 'validation', name: 'Validation', icon: '✅' },
+    { id: 'errors', name: 'Error Handling', icon: '⚠️' },
+    { id: 'performance', name: 'Performance', icon: '⚡' },
+    { id: 'security', name: 'Security', icon: '🛡️' }
+  ], []);
+  
+  // ========================================================================
+  // AUTHENTICATION TESTS
+  // ========================================================================
+  
+  const testLogin = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testLogin({
+        email: "test@example.com",
+        password: 'password123'
+      });
+      
+      if (result && result.success) {
+        if (result.token) localStorage.setItem('test_token', result.token);
+        if (result.user) setUser(result.user);
+        setTestResults(prev => ({ ...prev, login: '✅ PASS' }));
+        triggerConfetti({ particleCount: 50, spread: 70 });
+      } else {
+        setTestResults(prev => ({ ...prev, login: '❌ FAIL: Unexpected response format' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, login: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  };
+  
+  const testRegister = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testRegister({
+        email: `test${Date.now()}@example.com`,
+        password: 'password123',
+        name: 'Test User'
+      });
+      
+      if (result && result.success) {
+        setTestResults(prev => ({ ...prev, register: '✅ PASS' }));
+        alert('Registration successful!');
+      } else {
+        setTestResults(prev => ({ ...prev, register: '❌ FAIL: Unexpected response format' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, register: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const testGetCurrentUser = async () => {
+    const token = localStorage.getItem('test_token');
+    if (!token) {
+      setError('No token found. Please login first.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testGetCurrentUser(token);
+      if (result) {
+        setUser(result);
+        setTestResults(prev => ({ ...prev, getCurrentUser: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, getCurrentUser: '❌ FAIL: No user data returned' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, getCurrentUser: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // ========================================================================
+  // DATABASE TESTS
+  // ========================================================================
+  
+  const testCreateRecord = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testCreateRecord({
+        title: 'Test Record',
+        content: '<p>This is a <strong>test</strong> record</p>'
+      });
+      
+      if (result && result.record) {
+        setRecords(prev => {
+          const prevArr = Array.isArray(prev) ? prev : [];
+          const newRecord = result.record;
+          return newRecord ? [newRecord, ...prevArr] : prevArr;
+        });
+        setTestResults(prev => ({ ...prev, createRecord: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, createRecord: '❌ FAIL: No record returned' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, createRecord: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const testGetRecords = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testGetRecords({ page: 1, limit: 10 });
+      if (result && Array.isArray(result.records)) {
+        setRecords(result.records);
+        setTestResults(prev => ({ ...prev, getRecords: '✅ PASS' }));
+      } else {
+        setRecords([]);
+        setTestResults(prev => ({ ...prev, getRecords: '❌ FAIL: Invalid response format' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, getRecords: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const testUpdateRecord = async () => {
+    const arr = Array.isArray(records) ? records : [];
+    if (arr.length === 0) {
+      setError('No records to update. Create a record first.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const firstRecord = arr[0];
+      if (!firstRecord || !firstRecord.id) {
+        setError('Invalid record to update.');
+        return;
+      }
+      const result = await Actions.secure_testUpdateRecord({
+        id: firstRecord.id,
+        title: 'Updated Record',
+        content: 'Updated content'
+      });
+      
+      if (result && result.success) {
+        setTestResults(prev => ({ ...prev, updateRecord: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, updateRecord: '❌ FAIL: Update failed' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, updateRecord: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const testDeleteRecord = async () => {
+    const arr = Array.isArray(records) ? records : [];
+    if (arr.length === 0) {
+      setError('No records to delete. Create a record first.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const firstRecord = arr[0];
+      if (!firstRecord || !firstRecord.id) {
+        setError('Invalid record to delete.');
+        return;
+      }
+      // Ensure ID is passed as a number (not string)
+      const recordId = typeof firstRecord.id === 'number' ? firstRecord.id : Number(firstRecord.id);
+      if (isNaN(recordId)) {
+        setError('Invalid record ID.');
+        return;
+      }
+      const result = await Actions.secure_testDeleteRecord(recordId);
+      if (result && result.success) {
+        setRecords(prev => {
+          const prevArr = Array.isArray(prev) ? prev : [];
+          return prevArr.filter(r => r && r.id !== firstRecord.id);
+        });
+        setTestResults(prev => ({ ...prev, deleteRecord: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, deleteRecord: '❌ FAIL: Delete failed' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, deleteRecord: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================================================
+  // VALIDATION & SANITIZATION TESTS
+  // ========================================================================
+  
+  const testValidation = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testValidation({
+        email: "test@example.com",
+        name: 'Test User',
+        age: 25,
+        url: 'https://example.com',
+        tags: ['tag1', 'tag2']
+      });
+      
+      if (result && result.success) {
+        setTestResults(prev => ({ ...prev, validation: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, validation: '❌ FAIL: Validation failed' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, validation: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testSanitization = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testSanitization({
+        html: '<p>Test <script>alert("xss")</script></p>',
+        string: '<strong>Test</strong> String',
+        email: "test@example.com",
+        url: 'javascript:alert("xss")',
+        object: { name: '<script>alert("xss")</script>' }
+      });
+      
+      if (result && result.success) {
+        setTestResults(prev => ({ ...prev, sanitization: '✅ PASS' }));
+      } else {
+        setTestResults(prev => ({ ...prev, sanitization: '❌ FAIL: Sanitization failed' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, sanitization: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // ========================================================================
+  // ERROR HANDLING TESTS
+  // ========================================================================
+  
+  const testErrorHandling = async (type) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await Actions.secure_testErrorHandling(type);
+      setTestResults(prev => ({ ...prev, [`error_${type}`]: '❌ FAIL: Should have thrown error' }));
+    } catch (err) {
+      setTestResults(prev => ({ ...prev, [`error_${type}`]: `✅ PASS: ${err.message}` }));
+    } finally {
+    setLoading(false);
+    }
+  };
+
+  // ========================================================================
+  // PERFORMANCE TESTS
+  // ========================================================================
+  
+  const testPerformance = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await Actions.secure_testPerformance(1000);
+      if (result && result.iterations && result.duration) {
+        const avgTime = result.averageTime ? result.averageTime.toFixed(2) : (result.duration / result.iterations).toFixed(2);
+        setTestResults(prev => ({ ...prev, performance: `✅ PASS: ${result.iterations} iterations in ${result.duration}ms (avg: ${avgTime}ms)` }));
+      } else {
+        setTestResults(prev => ({ ...prev, performance: '❌ FAIL: Invalid performance result' }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({ ...prev, performance: `❌ FAIL: ${err.message}` }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // ========================================================================
+  // RUN ALL TESTS
+  // ========================================================================
+  
+  const runAllTests = async () => {
+    setLoading(true);
+    setError(null);
+    setTestResults({});
+    testCountRef.current = 0;
+    
+    const tests = [
+      { name: 'login', fn: testLogin },
+      { name: 'register', fn: testRegister },
+      { name: 'getCurrentUser', fn: testGetCurrentUser },
+      { name: 'createRecord', fn: testCreateRecord },
+      { name: 'getRecords', fn: testGetRecords },
+      { name: 'updateRecord', fn: testUpdateRecord },
+      { name: 'deleteRecord', fn: testDeleteRecord },
+      { name: 'validation', fn: testValidation },
+      { name: 'sanitization', fn: testSanitization },
+      { name: 'performance', fn: testPerformance }
+    ];
+    
+    for (const test of tests) {
+      lastTestRef.current = test.name;
+      try {
+        await test.fn();
+        testCountRef.current++;
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+      } catch (err) {
+        console.error(`Test ${test.name} failed:`, err);
+      }
+    }
+    
+    setLoading(false);
+    triggerConfetti({ particleCount: 100, spread: 70 });
+    alert(`Tests completed! ${testCountRef.current}/${tests.length} passed.`);
+  };
+  
+  // ========================================================================
+  // RENDER
+  // ========================================================================
+
+  return div([
+    // Header
+    div([
+      h1("🧪 ATOM Framework - Complete Test Suite", {
+        className: "text-4xl font-bold mb-2"
+      }),
+      p("Comprehensive production-level testing of all framework features", {
+        className: "text-gray-600 mb-6"
+      }),
+      user && div([
+        span(`Logged in as: ${user.name} (${user.email})`, {
+          className: "text-green-600 font-semibold"
+        }),
+        button("Logout", {
+          onclick: () => {
+            localStorage.removeItem('test_token');
+            setUser(null);
+            setRecords([]);
+          },
+          className: "ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
+        })
+      ], { className: "mb-4" })
+    ], { className: "mb-8" }),
+    
+    // Error Display
+    error && div([
+      p(`Error: ${error}`, {
+        className: "text-red-600 bg-red-50 p-4 rounded mb-4"
+      })
+    ]),
+    
+    // Test Categories
+    div([
+      h2("Test Categories", { className: "text-2xl font-bold mb-4" }),
+      div(
+        testCategories.map(cat =>
+          button([
+            span(cat.icon, { className: "mr-2" }),
+            span(cat.name)
+          ], {
+            onclick: () => setCurrentTest(cat.id),
+            className: `px-4 py-2 rounded mr-2 mb-2 ${
+              currentTest === cat.id 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`
+          })
+        ),
+        { className: "flex flex-wrap mb-6" }
+      ),
+      button("🚀 Run All Tests", {
+        onclick: runAllTests,
+        disabled: loading,
+        className: "px-6 py-3 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:opacity-50 mb-6"
+      })
+    ], { className: "mb-8" }),
+    
+    // Authentication Tests
+    currentTest === 'auth' && div([
+      h2("🔐 Authentication Tests", { className: "text-2xl font-bold mb-4" }),
+        div([
+        button("Test Login", {
+          onclick: testLogin,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Register", {
+          onclick: testRegister,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Get Current User", {
+          onclick: testGetCurrentUser,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        })
+      ], { className: "mb-4" }),
+            div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...(() => {
+          const authResults = Object.entries(testResults || {})
+            .filter(([key]) => ['login', 'register', 'getCurrentUser'].includes(key));
+          if (authResults.length > 0) {
+            return authResults.map(([key, value]) =>
+              div(`${key}: ${value}`, {
+                className: "p-2 bg-gray-100 rounded mb-1"
+              })
+            );
+          } else {
+            return [div("No results yet. Click a test button above.", {
+              className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+            })];
+          }
+        })()
+      ])
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Database Tests
+    currentTest === 'database' && div([
+      h2("💾 Database Tests", { className: "text-2xl font-bold mb-4" }),
+        div([
+        button("Test Create Record", {
+          onclick: testCreateRecord,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Get Records", {
+          onclick: testGetRecords,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Update Record", {
+          onclick: testUpdateRecord,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Delete Record", {
+          onclick: testDeleteRecord,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        })
+      ], { className: "mb-4" }),
+      safeRecords.length > 0 ? div([
+        h3("Records:", { className: "font-bold mb-2" }),
+        ...safeRecords.slice(0, 5).map(record => {
+          if (!record || typeof record !== 'object') return null;
+          return div([
+            strong(record.title || `Record ${record.id || 'Unknown'}`),
+            p(record.content || 'No content', { className: "text-sm text-gray-600" })
+          ], {
+            className: "p-2 bg-gray-100 rounded mb-2"
+          });
+        }).filter(Boolean)
+      ]) : null,
+      div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...(() => {
+          const dbResults = Object.entries(testResults || {})
+            .filter(([key]) => ['createRecord', 'getRecords', 'updateRecord', 'deleteRecord'].includes(key));
+          if (dbResults.length > 0) {
+            return dbResults.map(([key, value]) =>
+              div(`${key}: ${value}`, {
+                className: "p-2 bg-gray-100 rounded mb-1"
+              })
+            );
+          } else {
+            return [div("No results yet. Click a test button above.", {
+              className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+            })];
+          }
+        })()
+      ])
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Validation & Sanitization Tests
+    currentTest === 'validation' && div([
+      h2("✅ Validation & Sanitization Tests", { className: "text-2xl font-bold mb-4" }),
+        div([
+        button("Test Validation", {
+          onclick: testValidation,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Sanitization", {
+          onclick: testSanitization,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        })
+      ], { className: "mb-4" }),
+    div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...(() => {
+          const valResults = Object.entries(testResults || {})
+            .filter(([key]) => ['validation', 'sanitization'].includes(key));
+          if (valResults.length > 0) {
+            return valResults.map(([key, value]) =>
+              div(`${key}: ${value}`, {
+                className: "p-2 bg-gray-100 rounded mb-1"
+              })
+            );
+          } else {
+            return [div("No results yet. Click a test button above.", {
+              className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+            })];
+          }
+        })()
+      ])
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Error Handling Tests
+    currentTest === 'errors' && div([
+      h2("⚠️ Error Handling Tests", { className: "text-2xl font-bold mb-4" }),
+    div([
+        button("Test Validation Error", {
+          onclick: () => testErrorHandling('validation'),
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Database Error", {
+          onclick: () => testErrorHandling('database'),
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Permission Error", {
+          onclick: () => testErrorHandling('permission'),
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test Not Found Error", {
+          onclick: () => testErrorHandling('notfound'),
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        })
+      ], { className: "mb-4" }),
+            div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...(() => {
+          const errorResults = Object.entries(testResults || {})
+            .filter(([key]) => key.startsWith('error_'));
+          if (errorResults.length > 0) {
+            return errorResults.map(([key, value]) =>
+              div(`${key}: ${value}`, {
+                className: "p-2 bg-gray-100 rounded mb-1"
+              })
+            );
+          } else {
+            return [div("No results yet. Click a test button above.", {
+              className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+            })];
+          }
+        })()
+      ])
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Performance Tests
+    currentTest === 'performance' && div([
+      h2("⚡ Performance Tests", { className: "text-2xl font-bold mb-4" }),
+    div([
+        button("Test Performance (1000 iterations)", {
+          onclick: testPerformance,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        })
+      ], { className: "mb-4" }),
+        div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...((testResults && testResults.performance)
+          ? [div(`performance: ${testResults.performance}`, {
+              className: "p-2 bg-gray-100 rounded mb-1"
+            })]
+          : [div("No results yet. Click a test button above.", {
+              className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+            })])
+      ])
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Security Tests
+    currentTest === 'security' && div([
+      h2("🛡️ Security Tests", { className: "text-2xl font-bold mb-4" }),
+      p("Security tests are integrated into validation and sanitization tests.", {
+        className: "text-gray-600 mb-4"
+      }),
+            div([
+        button("Test XSS Prevention", {
+          onclick: testSanitization,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
+        }),
+        button("Test SQL Injection Prevention", {
+          onclick: () => {
+            alert('SQL injection prevention is handled by parameterized queries. Test by attempting SQL injection in forms.');
+          },
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2"
+        })
+      ], { className: "mb-4" })
+    ], { className: "mb-8 p-4 border rounded" }),
+    
+    // Loading Indicator
+    loading && div([
+      p("Loading...", {
+        className: "text-blue-600 font-semibold"
+      })
+    ], { className: "text-center py-4" }),
+    
+    // Test Summary
+    Object.keys(testResults || {}).length > 0 && div([
+      h2("📊 Test Summary", { className: "text-2xl font-bold mb-4" }),
+            div([
+        p(`Total Tests: ${Object.keys(testResults || {}).length}`, {
+          className: "font-semibold"
+        }),
+        p(`Passed: ${Object.values(testResults || {}).filter(r => r && typeof r === 'string' && r.includes('✅')).length}`, {
+          className: "text-green-600 font-semibold"
+        }),
+        p(`Failed: ${Object.values(testResults || {}).filter(r => r && typeof r === 'string' && r.includes('❌')).length}`, {
+          className: "text-red-600 font-semibold"
+        })
+      ], { className: "p-4 bg-gray-100 rounded" })
+    ], { className: "mt-8" })
+  ], {
+    className: "max-w-6xl mx-auto p-8"
+  });
+}

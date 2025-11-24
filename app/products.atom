@@ -1,0 +1,149 @@
+@Title "Products - ATOM Showcase"
+@Description "Browse our collection of high-performance developer tools."
+@Revalidate 60
+
+@Flow Actions {
+  secure_getProducts: async function(query) {
+    // Input Validation
+    if (query && typeof query === 'string' && query.length > 50) {
+      throw new Error("Search query too long (max 50 chars)");
+    }
+
+    // Mock Database Data
+    const allProducts = [
+      { id: 1, title: "Atom Compiler", price: "$0.00", description: "The core engine that powers everything. Blazing fast builds.", image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&q=80" },
+      { id: 2, title: "DevTools Pro", price: "$49.00", description: "Advanced debugging and performance profiling suite.", image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&q=80" },
+      { id: 3, title: "Cloud Deploy", price: "$19/mo", description: "One-click deployment to edge networks globally.", image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80" },
+      { id: 4, title: "UI Kit", price: "$29.00", description: "Beautiful, accessible components for your next project.", image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=600&q=80" },
+      { id: 5, title: "Database Connector", price: "$39.00", description: "Secure, type-safe database access with zero config.", image: "https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600&q=80" },
+      { id: 6, title: "Auth Module", price: "$0.00", description: "Complete authentication system with OAuth support.", image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80" }
+    ];
+
+    // Simulate network latency
+    await new Promise(r => setTimeout(r, 300));
+
+    // Ensure we always return an array
+    let result;
+    if (query && typeof query === 'string' && query.trim()) {
+      const lowerQuery = query.toLowerCase();
+      result = allProducts.filter(p => 
+        p.title.toLowerCase().includes(lowerQuery) || 
+        p.description.toLowerCase().includes(lowerQuery)
+      );
+    } else {
+      result = allProducts;
+    }
+
+    // Defensive: Always return an array
+    return Array.isArray(result) ? result : [];
+  }
+};
+
+@View {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+
+  // Use useRef to track loading state and debounce timer
+  const loadingRef = useRef(false);
+  const searchDebounceRef = useRef(null);
+
+  // Initial load - only once on mount
+    useEffect(() => {
+      loadProducts();
+  }, []); // Empty deps array means run only once
+
+  const loadProducts = async (query = "") => {
+    // Prevent duplicate simultaneous requests
+    if (loadingRef.current) return;
+    
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await Actions.secure_getProducts(query);
+      // Defensive: Ensure data is always an array
+      if (!Array.isArray(data)) {
+        console.warn('loadProducts: Expected array but got:', typeof data, data);
+        setProducts([]);
+      } else {
+      setProducts(data);
+      }
+    } catch (err) {
+      console.error('loadProducts error:', err);
+      setError(err);
+      setProducts([]); // Reset to empty array on error
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  };
+
+  const handleSearch = (val) => {
+    setSearch(val);
+    
+    // Clear previous debounce timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    
+    // Debounce search requests (wait 300ms after user stops typing)
+    searchDebounceRef.current = setTimeout(() => {
+    loadProducts(val);
+    }, 300);
+  };
+  
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
+  return div([
+    // Header
+    div([
+      h1("Our Products", { className: "text-4xl font-bold mb-4" }),
+      p("Tools designed for the modern web.", { className: "text-xl text-gray-600 mb-8" }),
+      
+      // Search
+      div([
+        FormInput({
+          placeholder: "Search products...",
+          value: search,
+          onChange: handleSearch,
+          className: "max-w-md"
+        })
+      ], { className: "mb-12" })
+    ], { className: "max-w-7xl mx-auto px-6 pt-12" }),
+
+    // Grid
+    div([
+      error ? ErrorDisplay({ error }) : null,
+      
+      loading ? LoadingSpinner() : 
+      
+      (!Array.isArray(products) || products.length === 0) ? 
+        div("No products found matching your search.", { className: "text-center text-gray-500 py-12" }) :
+        
+        div((Array.isArray(products) ? products : []).map((product, index) => {
+          // Defensive: Ensure product is an object
+          if (!product || typeof product !== 'object') {
+            console.warn('Invalid product at index', index, product);
+            return null;
+          }
+          return ProductCard({
+            title: product.title || 'Untitled',
+            description: product.description || '',
+            price: product.price || '$0.00',
+            image: product.image || '',
+            onAddToCart: () => alert(`Added ${product.title || 'product'} to cart!`)
+          });
+        }).filter(Boolean), { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" })
+        
+    ], { className: "max-w-7xl mx-auto px-6 pb-24 min-h-[400px]" })
+  ], { className: "bg-gray-50 min-h-screen" });
+}

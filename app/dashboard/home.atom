@@ -1,0 +1,71 @@
+@Title "Dashboard - ATOM Showcase"
+@Description "Protected dashboard area."
+
+@Flow Actions {
+  secure_getStats: async function() {
+    await new Promise(r => setTimeout(r, 500));
+    return {
+      users: 12543,
+      revenue: 45230,
+      growth: 12.5,
+      active: 892
+    };
+  }
+};
+
+@View {
+  const [stats, setStats] = useState(null);
+  
+    useEffect(() => {
+      Actions.secure_getStats().then(setStats);
+  }, []); // Empty deps array means run only once
+
+  return div([
+    !stats ? LoadingSpinner() : div([
+      div([
+        StatusCard({ label: "Total Users", value: stats.users.toLocaleString(), sub: "+12% from last month" }),
+        StatusCard({ label: "Revenue", value: "$" + stats.revenue.toLocaleString(), sub: "+8.2% from last month" }),
+        StatusCard({ label: "Active Now", value: stats.active, sub: "Current online users" }),
+        StatusCard({ label: "Growth", value: stats.growth + "%", sub: "Year over year" })
+      ], { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" }),
+      
+      div([
+        div([
+          h3("Recent Activity", { className: "font-bold text-lg mb-4" }),
+          div([
+            div("New user signed up", { className: "py-3 border-b text-sm text-gray-600" }),
+            div("Project 'Alpha' deployed", { className: "py-3 border-b text-sm text-gray-600" }),
+            div("Payment received from Client X", { className: "py-3 border-b text-sm text-gray-600" }),
+            div("Server backup completed", { className: "py-3 text-sm text-gray-600" })
+          ])
+        ], { className: "bg-gray-50 p-6 rounded-xl border border-gray-100" }),
+        
+        div([
+          h3("System Status", { className: "font-bold text-lg mb-4" }),
+          div([
+            div([
+              div("CPU Usage", { className: "text-sm text-gray-500 mb-1" }),
+              div([
+                div([], { className: "h-2 bg-blue-500 rounded w-3/4" })
+              ], { className: "h-2 bg-gray-200 rounded w-full" })
+            ], { className: "mb-4" }),
+            
+            div([
+              div("Memory", { className: "text-sm text-gray-500 mb-1" }),
+              div([
+                div([], { className: "h-2 bg-green-500 rounded w-1/2" })
+              ], { className: "h-2 bg-gray-200 rounded w-full" })
+            ], { className: "mb-4" }),
+            
+            div([
+              div("Disk Space", { className: "text-sm text-gray-500 mb-1" }),
+              div([
+                div([], { className: "h-2 bg-purple-500 rounded w-1/4" })
+              ], { className: "h-2 bg-gray-200 rounded w-full" })
+            ])
+          ])
+        ], { className: "bg-gray-50 p-6 rounded-xl border border-gray-100" })
+      ], { className: "grid grid-cols-1 lg:grid-cols-2 gap-8" })
+    ])
+  ]);
+}

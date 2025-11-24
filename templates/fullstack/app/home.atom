@@ -1,0 +1,176 @@
+@Title "Full-Stack App"
+@Description "Example full-stack application with server actions"
+
+@Flow Actions {
+  secure_getPosts: async function() {
+    // Example server action - fetch data
+    // In production, connect to your database here
+    return [
+      { 
+        id: 1, 
+        title: "Welcome to ATOM", 
+        content: "This is a full-stack example with server actions. Edit app/home.atom to customize.",
+        createdAt: new Date().toLocaleDateString()
+      },
+      { 
+        id: 2, 
+        title: "Server Actions", 
+        content: "Functions starting with 'secure_' run on the server. No API routes needed!",
+        createdAt: new Date().toLocaleDateString()
+      },
+      { 
+        id: 3, 
+        title: "Get Started", 
+        content: "Create your own server actions and build amazing apps with ATOM Framework.",
+        createdAt: new Date().toLocaleDateString()
+      }
+    ];
+  },
+  
+  secure_createPost: async function(data) {
+    // Example: Save to database
+    // const db = require('./db');
+    // const result = await db.query('INSERT INTO posts (title, content) VALUES ($1, $2) RETURNING *', [data.title, data.content]);
+    // return result.rows[0];
+    
+    // For demo, return mock data
+    return { 
+      id: Date.now(), 
+      title: data.title,
+      content: data.content,
+      createdAt: new Date().toLocaleDateString()
+    };
+  }
+};
+
+@View {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const result = await Actions.secure_getPosts();
+      if (result && Array.isArray(result)) {
+        setPosts(result);
+      } else {
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load posts on mount
+  if (posts.length === 0 && !loading) {
+    loadPosts();
+  }
+  
+  const createPost = async () => {
+    if (!title.trim() || !content.trim()) return;
+    
+    try {
+      setSubmitting(true);
+      const newPost = await Actions.secure_createPost({ title: title.trim(), content: content.trim() });
+      if (newPost) {
+        setPosts([newPost, ...posts]);
+        setTitle('');
+        setContent('');
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  return div([
+    // Header
+    div([
+      img({
+        src: "/atom-icon.svg",
+        alt: "ATOM Framework",
+        className: "w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4"
+      }),
+      h1("Full-Stack Blog", {
+        className: "text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2"
+      }),
+      p("Server actions example with ATOM Framework", {
+        className: "text-sm sm:text-base text-gray-600"
+      })
+    ], { className: "mb-6 sm:mb-8 text-center px-4" }),
+    
+    // Create Post Form
+    div([
+      h2("Create New Post", {
+        className: "text-lg sm:text-xl font-semibold mb-4 text-gray-800"
+      }),
+      div([
+        input(title, {
+          placeholder: "Post title",
+          value: title,
+          oninput: (e) => setTitle(e.target.value),
+          className: "w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#19A88D] focus:border-transparent outline-none transition"
+        }),
+        textarea(content, {
+          placeholder: "Post content",
+          value: content,
+          oninput: (e) => setContent(e.target.value),
+          rows: 4,
+          className: "w-full px-3 sm:px-4 py-2 mt-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#19A88D] focus:border-transparent outline-none transition resize-none"
+        }),
+        button(submitting ? "Creating..." : "Create Post", {
+          onclick: createPost,
+          disabled: submitting || !title.trim() || !content.trim(),
+          className: `mt-4 w-full sm:w-auto px-6 py-2 text-sm sm:text-base rounded-lg font-medium transition ${
+            submitting || !title.trim() || !content.trim()
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-[#19A88D] text-white hover:bg-[#158a75] active:bg-[#126b5c]"
+          }`
+        })
+      ])
+    ], { className: "mb-6 sm:mb-8 p-4 sm:p-6 bg-white rounded-xl shadow-sm border border-gray-200" }),
+    
+    // Posts List
+    div([
+      h2("Posts", {
+        className: "text-xl sm:text-2xl font-semibold mb-4 text-gray-800"
+      }),
+      loading ? (
+        div("Loading posts...", {
+          className: "text-center py-8 text-gray-500"
+        })
+      ) : !posts || posts.length === 0 ? (
+        div("No posts yet. Create your first post above!", {
+          className: "text-center py-8 text-gray-500"
+        })
+      ) : (
+        div(posts.map(post => 
+          div([
+            h3(post.title || "Untitled", {
+              className: "text-lg sm:text-xl font-semibold mb-2 text-gray-900"
+            }),
+            p(post.content || "", {
+              className: "text-sm sm:text-base text-gray-700 mb-2 leading-relaxed"
+            }),
+            post.createdAt && (
+              span(post.createdAt, {
+                className: "text-xs sm:text-sm text-gray-500"
+              })
+            )
+          ], { 
+            className: "p-4 sm:p-5 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow mb-4" 
+          })
+        ))
+      )
+    ])
+  ], { 
+    className: "max-w-3xl mx-auto p-4 sm:p-6 min-h-screen bg-gray-50" 
+  });
+}

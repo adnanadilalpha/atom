@@ -1,0 +1,51 @@
+@Title "Database Example"
+@Description "Example of database integration"
+
+@Resource DB from './db';
+
+@Flow Actions {
+  secure_getUsers: async function() {
+    // Example with PostgreSQL
+    const users = await DB.query('SELECT * FROM users LIMIT 10');
+    return users.rows;
+  },
+  
+  secure_createUser: async function(data) {
+    const result = await DB.query(
+      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
+      [data.name, data.email]
+    );
+    return result.rows[0];
+  }
+};
+
+@View {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  const loadUsers = async () => {
+    setLoading(true);
+    const data = await Actions.secure_getUsers();
+    setUsers(data);
+    setLoading(false);
+  };
+  
+  if (users.length === 0 && !loading) {
+    loadUsers();
+    return div("Loading users...");
+  }
+  
+  return div([
+    h1("Users", { className: "text-2xl font-bold mb-4" }),
+    button("Refresh", { 
+      onclick: loadUsers,
+      className: "mb-4 px-4 py-2 bg-[#19A88D] text-white rounded hover:bg-[#158a75]"
+    }),
+    ul(users.map(user => 
+      li(`${user.name} - ${user.email}`, { 
+        className: "p-2 border-b" 
+      })
+    ))
+  ]);
+}
+

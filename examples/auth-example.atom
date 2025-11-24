@@ -1,0 +1,101 @@
+@Title "Authentication Example"
+@Description "JWT-based authentication example"
+
+@Resource DB from './db';
+@Resource jwt from 'jsonwebtoken';
+
+@Flow Actions {
+  secure_login: async function(credentials) {
+    const { email, password } = credentials;
+    
+    // Verify user (in production, hash password)
+    const user = await DB.query(
+      'SELECT * FROM users WHERE email = $1 AND password = $2',
+      [email, password]
+    );
+    
+    if (user.rows.length === 0) {
+      throw new Error('Invalid credentials');
+    }
+    
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.rows[0].id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    return { token, user: user.rows[0] };
+  },
+  
+  secure_getCurrentUser: async function(token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await DB.query('SELECT * FROM users WHERE id = $1', [decoded.userId]);
+      return user.rows[0];
+    } catch (e) {
+      throw new Error('Invalid token');
+    }
+  }
+};
+
+@View {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  
+  // Check for existing session
+  if (!user) {
+    const token = localStorage.getItem('token');
+    if (token) {
+      Actions.secure_getCurrentUser(token)
+        .then(setUser)
+        .catch(() => localStorage.removeItem('token'));
+    }
+  }
+  
+  const handleLogin = async () => {
+    setError(null);
+    try {
+      const result = await Actions.secure_login({ email, password });
+      localStorage.setItem('token', result.token);
+      setUser(result.user);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+  
+  if (user) {
+    return div([
+      h1(`Welcome, ${user.name}!`),
+      button("Logout", { onclick: handleLogout })
+    ]);
+  }
+  
+  return div([
+    h1("Login", { className: "text-2xl font-bold mb-4" }),
+    error && div(error, { className: "text-red-500 mb-4" }),
+    input(email, {
+      placeholder: "Email",
+      oninput: (e) => setEmail(e.target.value),
+      className: "block w-full p-2 border mb-2"
+    }),
+    input(password, {
+      type: "password",
+      placeholder: "Password",
+      oninput: (e) => setPassword(e.target.value),
+      className: "block w-full p-2 border mb-2"
+    }),
+    button("Login", {
+      onclick: handleLogin,
+      className: "px-4 py-2 bg-[#19A88D] text-white rounded hover:bg-[#158a75]"
+    })
+  ]);
+}
+

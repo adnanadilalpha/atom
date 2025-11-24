@@ -1,0 +1,9 @@
+@Flow Actions {
+    GET: async function() {
+      return { 
+          status: "Healthy", 
+          server_time: new Date().toISOString(),
+          engine: "ATOM V38"
+      };
+    }
+  };

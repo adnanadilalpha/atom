@@ -1,0 +1,15 @@
+@Flow Actions {
+    // This runs on EVERY request to the server
+    handler: async function(req, res, next) {
+      console.log(`[Middleware] Incoming Request: ${req.method} ${req.path}`);
+      
+      // Simple Auth Check Simulation
+      if (req.path.startsWith('/admin')) {
+          // In real life, check cookies here
+          console.log("🛡️ Checking Admin Access...");
+      }
+      
+      // Continue to page
+      next();
+    }
+  };

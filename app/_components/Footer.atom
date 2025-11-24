@@ -1,0 +1,31 @@
+@View {
+  return footer([
+    div([
+      div([
+        h3("ATOM Showcase", { className: "text-xl font-bold text-white mb-4" }),
+        p("Demonstrating the power of the ATOM Framework V53.", { className: "text-gray-400" })
+      ], { className: "col-span-1 md:col-span-2" }),
+      
+      div([
+        h4("Links", { className: "font-bold text-white mb-4" }),
+        div([
+          a("Home", { href: "/", className: "block text-gray-400 hover:text-white mb-2" }),
+          a("Products", { href: "/products", className: "block text-gray-400 hover:text-white mb-2" }),
+          a("Blog", { href: "/blog", className: "block text-gray-400 hover:text-white mb-2" }),
+          a("About", { href: "/about", className: "block text-gray-400 hover:text-white mb-2" })
+        ])
+      ]),
+      
+      div([
+        h4("Connect", { className: "font-bold text-white mb-4" }),
+        div([
+          a("GitHub", { href: "https://github.com", className: "block text-gray-400 hover:text-white mb-2" }),
+          a("Twitter", { href: "https://twitter.com", className: "block text-gray-400 hover:text-white mb-2" }),
+          a("Discord", { href: "https://discord.com", className: "block text-gray-400 hover:text-white mb-2" })
+        ])
+      ])
+    ], { className: "grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto" }),
+    
+    div("© 2024 ATOM Framework. Open Source.", { className: "text-center text-gray-500 mt-12 pt-8 border-t border-gray-800" })
+  ], { className: "bg-gray-900 py-12 px-6 mt-auto" });
+}

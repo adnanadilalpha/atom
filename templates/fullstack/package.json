@@ -1,0 +1,12 @@
+{
+  "name": "atom-fullstack-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "atom dev",
+    "build": "atom build",
+    "start": "atom start"
+  },
+  "dependencies": {
+    "atom-framework": "^1.5.0"
+  }
+}

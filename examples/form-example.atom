@@ -1,0 +1,108 @@
+@Title "Form Handling Example"
+@Description "Example of form validation and submission"
+
+@Flow Actions {
+  secure_submitForm: async function(data) {
+    // Validate on server
+    if (!data.name || data.name.length < 2) {
+      throw new Error('Name must be at least 2 characters');
+    }
+    if (!data.email || !data.email.includes('@')) {
+      throw new Error('Invalid email');
+    }
+    
+    // Process form data
+    console.log('Form submitted:', data);
+    return { success: true, id: Date.now() };
+  }
+};
+
+@View {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  
+  const validate = () => {
+    const newErrors = {};
+    if (!name || name.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
+    if (!email || !email.includes('@')) {
+      newErrors.email = 'Invalid email address';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validate()) return;
+    
+    setSubmitting(true);
+    setSuccess(false);
+    
+    try {
+      const result = await Actions.secure_submitForm({ name, email });
+      setSuccess(true);
+      setName('');
+      setEmail('');
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  return div([
+    h1("Contact Form", { className: "text-2xl font-bold mb-4" }),
+    
+    success && div("Form submitted successfully!", {
+      className: "p-4 bg-green-100 text-green-700 rounded mb-4"
+    }),
+    
+    form([
+      div([
+        label("Name", { className: "block mb-1" }),
+        input(name, {
+          value: name,
+          oninput: (e) => setName(e.target.value),
+          className: "w-full p-2 border rounded",
+          placeholder: "Your name"
+        }),
+        errors.name && div(errors.name, {
+          className: "text-red-500 text-sm mt-1"
+        })
+      ], { className: "mb-4" }),
+      
+      div([
+        label("Email", { className: "block mb-1" }),
+        input(email, {
+          type: "email",
+          value: email,
+          oninput: (e) => setEmail(e.target.value),
+          className: "w-full p-2 border rounded",
+          placeholder: "your@email.com"
+        }),
+        errors.email && div(errors.email, {
+          className: "text-red-500 text-sm mt-1"
+        })
+      ], { className: "mb-4" }),
+      
+      errors.submit && div(errors.submit, {
+        className: "text-red-500 mb-4"
+      }),
+      
+      button(submitting ? "Submitting..." : "Submit", {
+        onclick: handleSubmit,
+        disabled: submitting,
+        className: "px-6 py-2 bg-[#19A88D] text-white rounded hover:bg-[#158a75] disabled:opacity-50"
+      })
+    ], {
+      onsubmit: handleSubmit
+    })
+  ], { className: "max-w-md mx-auto p-8" });
+}
+

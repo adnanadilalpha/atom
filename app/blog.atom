@@ -1,0 +1,67 @@
+@Title "Blog - ATOM Showcase"
+@Description "Latest news and updates from the ATOM team."
+@Revalidate 300
+
+@Flow Actions {
+  secure_getPosts: async function() {
+    // Simulate DB fetch
+    await new Promise(r => setTimeout(r, 200));
+    
+    return [
+      { id: 1, title: "Introducing ATOM V53", excerpt: "The fastest framework just got faster. Learn about the new compiler optimizations.", date: "Oct 12, 2024", author: "Alex Developer", category: "News" },
+      { id: 2, title: "Why We Built Our Own Compiler", excerpt: "Standard tools weren't cutting it. Here's how we achieved sub-millisecond builds.", date: "Oct 08, 2024", author: "Mike Engineer", category: "Engineering" },
+      { id: 3, title: "Nested Layouts Guide", excerpt: "A deep dive into the new routing system and how to structure complex apps.", date: "Sep 28, 2024", author: "Sarah Designer", category: "Tutorial" },
+      { id: 4, title: "Edge Runtime Support", excerpt: "Deploy your ATOM apps to the edge with zero configuration.", date: "Sep 15, 2024", author: "Alex Developer", category: "Features" }
+    ];
+  }
+};
+
+@View {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      Actions.secure_getPosts().then(data => {
+        setPosts(data);
+        setLoading(false);
+      });
+  }, []); // Empty deps array means run only once
+
+  return div([
+    div([
+      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
+      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
+    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
+
+    div([
+      loading ? LoadingSpinner() : 
+      
+      div(posts.map(post => 
+        div([
+          div([
+            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
+            span("•", { className: "mx-2 text-gray-300" }),
+            span(post.date, { className: "text-xs text-gray-500" })
+          ], { className: "mb-2 flex items-center" }),
+          
+          h2([
+            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
+          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
+          
+          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
+          
+          div([
+            div([
+              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
+              span(post.author, { className: "text-sm font-medium text-gray-900" })
+            ], { className: "flex items-center" }),
+            
+            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
+          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
+          
+        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
+      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
+      
+    ], { className: "pb-24" })
+  ], { className: "bg-gray-50 min-h-screen" });
+}

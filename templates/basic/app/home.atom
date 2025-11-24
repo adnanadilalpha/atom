@@ -1,0 +1,73 @@
+@Title "Welcome to ATOM"
+@Description "Your first ATOM application"
+
+@View {
+  const [count, setCount] = useState(0);
+  
+  return div([
+    // Hero Section
+    div([
+      img({
+        src: "/atom-icon.svg",
+        alt: "ATOM Framework",
+        className: "w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-4 sm:mb-6"
+      }),
+      h1("Welcome to ATOM Framework!", {
+        className: "text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3 sm:mb-4"
+      }),
+      p("A revolutionary full-stack framework for modern web development", {
+        className: "text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 px-4"
+      })
+    ], { className: "text-center mb-8 sm:mb-12" }),
+    
+    // Counter Example
+    div([
+      div([
+        h2("Interactive Counter", {
+          className: "text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800"
+        }),
+        div([
+          button("-", {
+            onclick: () => setCount(count - 1),
+            className: "px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-800 rounded-lg font-semibold transition"
+          }),
+          div([
+            span(count, {
+              className: "text-3xl sm:text-4xl font-bold text-gray-900"
+            }),
+            p("clicks", {
+              className: "text-xs sm:text-sm text-gray-500 mt-1"
+            })
+          ], { className: "mx-4 sm:mx-8 text-center" }),
+          button("+", {
+            onclick: () => setCount(count + 1),
+            className: "px-4 sm:px-6 py-2 sm:py-3 text-lg sm:text-xl bg-[#19A88D] hover:bg-[#158a75] active:bg-[#126b5c] text-white rounded-lg font-semibold transition"
+          })
+        ], { className: "flex items-center justify-center" }),
+        button("Reset", {
+          onclick: () => setCount(0),
+          className: "mt-4 sm:mt-6 px-4 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+        })
+      ], { className: "p-6 sm:p-8 bg-white rounded-xl shadow-sm border border-gray-200" })
+    ], { className: "mb-6 sm:mb-8 w-full max-w-md mx-auto" }),
+    
+    // Quick Start Info
+    div([
+      h3("Quick Start", {
+        className: "text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800"
+      }),
+      div([
+        p("Edit ", { className: "text-sm sm:text-base text-gray-700" }),
+        code("app/home.atom", {
+          className: "px-2 py-1 text-xs sm:text-sm bg-gray-100 rounded font-mono text-gray-800"
+        }),
+        p(" to customize this page", { className: "text-sm sm:text-base text-gray-700" })
+      ], { className: "flex items-center gap-2 flex-wrap justify-center" }),
+      p("Learn more in the documentation", {
+        className: "text-sm sm:text-base text-gray-600 mt-3 sm:mt-4"
+      })
+    ], { className: "text-center p-4 sm:p-6 bg-gray-50 rounded-lg max-w-md mx-auto" })
+  ], {
+    className: "min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-gray-50"
+  });
+}

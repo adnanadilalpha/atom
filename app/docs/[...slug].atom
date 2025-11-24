@@ -1,0 +1,42 @@
+@Title "Documentation - ATOM Framework"
+@Description "Learn how to use the ATOM Framework."
+
+@View {
+  const { params } = props || {};
+  // Ensure slug is always an array - handle both array and string cases
+  let slug = [];
+  if (params && params.slug) {
+    if (Array.isArray(params.slug)) {
+      slug = params.slug;
+    } else if (typeof params.slug === 'string') {
+      slug = params.slug ? [params.slug] : [];
+    }
+  }
+  const path = slug.join(' / ');
+  
+  return div([
+    div([
+      span(path || "Docs", { className: "text-sm text-blue-600 font-bold uppercase tracking-wide mb-2 block" }),
+      h1(slug[slug.length - 1] || "Introduction", { className: "text-4xl font-black mb-6 capitalize" }),
+      
+      div([
+        p("This is a dynamically generated documentation page based on the URL path.", { className: "text-xl text-gray-600 mb-8" }),
+        
+        div([
+          h3("Current Path Segments:", { className: "font-bold text-lg mb-2" }),
+          div([
+            slug.length === 0 
+              ? div("Root (/docs)", { className: "font-mono text-sm bg-gray-100 p-2 rounded" })
+              : slug.map(s => div(s, { className: "font-mono text-sm bg-gray-100 p-2 rounded mb-1" }))
+          ], { className: "bg-gray-50 p-4 rounded-lg border border-gray-200" })
+        ], { className: "mb-12" }),
+        
+        div([
+          h2("Content Placeholder", { className: "text-2xl font-bold mb-4" }),
+          p("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", { className: "mb-4 text-gray-600 leading-relaxed" }),
+          p("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", { className: "mb-4 text-gray-600 leading-relaxed" })
+        ])
+      ], { className: "prose max-w-none" })
+    ])
+  ]);
+}

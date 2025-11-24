@@ -1,0 +1,35 @@
+@View {
+  const { images = [] } = props || {}; // Array of { src, alt }
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  
+  return div([
+    // Main Image
+    div([
+      Image({
+        src: images[selectedIndex].src,
+        alt: images[selectedIndex].alt,
+        width: 800,
+        height: 600,
+        className: "w-full h-[400px] object-cover rounded-xl shadow-lg transition-opacity duration-300"
+      })
+    ], { className: "mb-4" }),
+    
+    // Thumbnails
+    div(images.map((img, idx) => 
+      div([
+        Image({
+          src: img.src,
+          alt: img.alt,
+          width: 100,
+          height: 100,
+          className: "w-full h-full object-cover"
+        })
+      ], {
+        className: `w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 transition ${
+          selectedIndex === idx ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent hover:border-gray-300'
+        }`,
+        onclick: () => setSelectedIndex(idx)
+      })
+    ), { className: "flex gap-4 overflow-x-auto pb-2" })
+  ], { className: "w-full" });
+}

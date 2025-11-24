@@ -1,0 +1,118 @@
+@Title "Blog Post - ATOM Showcase"
+@Description "Reading a blog post on the ATOM Showcase."
+@Revalidate 300
+
+@Flow Actions {
+  secure_getPost: async function(id) {
+    // Simulate DB fetch
+    await new Promise(r => setTimeout(r, 300));
+    
+    // Validation
+    if (!id || isNaN(parseInt(id))) {
+      throw new Error("Invalid post ID");
+    }
+
+    const posts = {
+      "1": { title: "Introducing ATOM V53", content: "This is the full content of the article about ATOM V53. It includes details about the new compiler, nested layouts, and improved performance...", date: "Oct 12, 2024", author: "Alex Developer" },
+      "2": { title: "Why We Built Our Own Compiler", content: "Building a compiler from scratch wasn't easy, but it was necessary. We needed granular control over code splitting and optimization...", date: "Oct 08, 2024", author: "Mike Engineer" },
+      "3": { title: "Nested Layouts Guide", content: "Nested layouts allow you to build complex UIs with ease. Simply place a _layout.atom file in any directory...", date: "Sep 28, 2024", author: "Sarah Designer" },
+      "4": { title: "Edge Runtime Support", content: "Deploying to the edge brings your app closer to users. With ATOM V53, it's as simple as adding a directive...", date: "Sep 15, 2024", author: "Alex Developer" }
+    };
+
+    const post = posts[id];
+    if (!post) throw new Error(`Post with ID ${id} not found`);
+    
+    return { id, ...post };
+  }
+};
+
+@View {
+  const { params } = props || {};
+  // Safely extract postId - handle both string and array cases
+  // Use useMemo to stabilize the postId value and prevent unnecessary re-renders
+  const rawId = params && params.id;
+  const postId = useMemo(() => {
+    if (!rawId) return null;
+    return Array.isArray(rawId) ? rawId[0] : String(rawId);
+  }, [rawId]);
+  
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Use useRef to track loading state and prevent duplicate requests
+  const loadingRef = useRef(false);
+  const lastPostIdRef = useRef(null);
+
+    useEffect(() => {
+    // Prevent duplicate simultaneous requests
+    if (loadingRef.current) {
+      return;
+    }
+    
+    // Only load if we have a valid postId
+    if (!postId) {
+      setLoading(false);
+      setError(new Error("No post ID provided"));
+      return;
+    }
+    
+    // Skip if we're already loading or have loaded this exact postId
+    if (postId === lastPostIdRef.current) {
+      return;
+    }
+    
+    loadingRef.current = true;
+    lastPostIdRef.current = postId;
+    setLoading(true);
+    setError(null);
+    setPost(null);
+    
+    const currentPostId = postId; // Capture for async callback
+    
+    Actions.secure_getPost(currentPostId)
+          .then(data => {
+        // Only update if this is still the current postId (user hasn't navigated away)
+        if (currentPostId === lastPostIdRef.current) {
+            setPost(data);
+            setLoading(false);
+        }
+        loadingRef.current = false;
+          })
+          .catch(err => {
+        // Only update if this is still the current postId
+        if (currentPostId === lastPostIdRef.current) {
+            setError(err);
+            setLoading(false);
+        }
+        loadingRef.current = false;
+        // Don't reset lastPostIdRef on error - keep it to prevent retry loops
+          });
+  }, [postId]); // Use postId directly instead of params.id
+
+  return div([
+    div([
+      a("← Back to Blog", { href: "/blog", className: "text-gray-500 hover:text-black font-medium mb-8 inline-block" }),
+      
+      loading ? LoadingSpinner() :
+      
+      error ? ErrorDisplay({ error }) :
+      
+      post ? div([
+        span(post.date, { className: "text-blue-600 font-bold tracking-wide text-sm uppercase mb-2 block" }),
+        h1(post.title, { className: "text-5xl font-black mb-6 text-gray-900 leading-tight" }),
+        
+        div([
+          div(post.author[0], { className: "w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-bold mr-3" }),
+          div([
+            p(post.author, { className: "font-bold text-gray-900" }),
+            p("Author", { className: "text-xs text-gray-500 uppercase" })
+          ])
+        ], { className: "flex items-center mb-12 pb-12 border-b border-gray-100" }),
+        
+        div(post.content, { className: "text-xl text-gray-800 leading-relaxed max-w-none" })
+      ]) : null
+      
+    ], { className: "max-w-3xl mx-auto px-6 py-12" })
+  ], { className: "bg-white min-h-screen" });
+}

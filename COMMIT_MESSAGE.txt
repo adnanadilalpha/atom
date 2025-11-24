@@ -1,0 +1,91 @@
+feat: Initial release of ATOM Framework v1.5.1
+
+⚛️ ATOM Framework - The Godfather of Full-Stack Development
+
+A revolutionary, compiler-driven, full-stack framework designed for maximum
+performance, security, and developer simplicity.
+
+## Core Features
+
+- Zero-overhead development with clean, portable codebase
+- Security by obfuscation - core engine compiled into native binary
+- Performance by SSR - every page is Server-Side Rendered for SEO and speed
+- Isomorphic splitting - write once, runs everywhere (Server + Client)
+- Instant hot reload via SSE
+- Enhanced image optimization with automatic srcset, WebP/AVIF support
+- Streaming SSR for progressive HTML streaming
+- ISR/SSG support for Incremental Static Regeneration and Static Site Generation
+- Edge runtime compatible (Cloudflare Workers, Vercel Edge)
+- Server Actions - zero API boilerplate, call server code directly from client
+- Built-in Tailwind CSS with zero-config PostCSS
+- TypeScript support with type checking and auto-generated definitions
+- Testing utilities with built-in test runner
+- Deployment helpers for Vercel, Cloudflare, Docker
+- Build analysis with automatic bundle size analysis
+
+## Developer Experience
+
+- Interactive project creation (like Next.js create-next-app)
+  - Template selection (Basic, Full-Stack, Empty)
+  - TypeScript option
+  - Tailwind CSS option (defaults to Yes)
+  - ESLint option
+  - Automatic dependency installation
+- Enhanced DevTools HUD with performance, SEO, and error monitoring
+- Error detection system for missing libraries, invalid Tailwind classes, CSS issues
+- VS Code integration with syntax highlighting for .atom files
+- Automatic port detection (finds next available port if default is in use)
+
+## Technical Highlights
+
+- Compiler-driven architecture with Babel parser and esbuild bundling
+- Express-based server with WebSocket support for hot reload
+- Client-side runtime with React-like hooks (useState, useEffect, etc.)
+- Server-side rendering engine with layout support
+- Route-based file system routing
+- Component system with reusable atoms
+- Resource system for server-side code organization
+- Middleware support (standard and edge-compatible)
+- API routes with automatic REST endpoint generation
+- Static page generation with @Static directive
+
+## Documentation
+
+Comprehensive documentation including:
+- Getting Started guide
+- Developer Guide
+- API Reference
+- Deployment guides
+- Troubleshooting
+- Production readiness checklist
+
+## Templates
+
+- Basic template - Simple starter with counter example
+- Full-Stack template - Complete example with server actions
+- Empty template - Minimal starter for custom projects
+
+All templates include:
+- Responsive design with Tailwind CSS
+- ATOM brand colors (#19A88D)
+- VS Code settings for syntax highlighting
+- Proper folder structure
+
+## Build System
+
+- esbuild for fast bundling
+- PostCSS with Tailwind and Autoprefixer
+- Automatic code splitting
+- Route files loaded dynamically at runtime
+- Bundle size analysis and optimization
+
+## Version
+
+v1.5.1 - Build Fixes & Developer Experience Release
+
+Fixes:
+- esbuild bundling errors (route files marked as external)
+- HUD z-index (always appears above content)
+- VS Code integration (syntax highlighting in templates)
+
+License: MIT

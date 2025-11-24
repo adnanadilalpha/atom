@@ -1,0 +1,53 @@
+@Title "User Profile | ATOM";
+@Resource DB from '../../db'; // Go up two levels
+
+@Flow Actions {
+  get_user: async function(id) {
+    console.log("Fetching User ID:", id);
+    // Mock DB lookup
+    return { 
+        id: id, 
+        name: "User " + id, 
+        role: id === '1' ? 'Admin' : 'Guest',
+        bio: "This data came from the server securely."
+    };
+  }
+};
+
+
+
+@View {
+  // PROPS now contains 'params' from the URL!
+  const { params } = props;
+  const [user, setUser] = useState(null);
+
+  if (!user) {
+      // Auto-fetch on load
+      Actions.get_user(params.id).then(data => setUser(data));
+      return div("Loading Profile...", { className: "p-10 text-center text-gray-500" });
+  }
+
+  return div([
+    div([
+      div([
+        h1("Welcome", { className: "text-4xl font-bold mb-10" }),
+    
+        // No import needed! It's auto-imported.
+        Card({ title: "Auto Import" }, "This component was loaded automatically from the _components folder.")
+    
+      ], { className: "p-20 bg-gray-50 min-h-screen" }),
+        // Avatar Circle
+        div(user.name[0], { className: "w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 mx-auto" }),
+        
+        h1(user.name, { className: "text-3xl font-bold text-center text-gray-800" }),
+        div(user.role, { className: "text-center text-sm uppercase tracking-wide text-blue-500 font-bold mb-4" }),
+        
+        div(user.bio, { className: "bg-gray-50 p-4 rounded-lg text-gray-600 text-center" }),
+        
+        div([
+            a("← Back Home", { href: "/", className: "text-blue-600 hover:underline" })
+        ], { className: "mt-6 text-center" })
+        
+    ], { className: "max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg mt-10" })
+  ]);
+}

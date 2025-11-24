@@ -1,0 +1,14 @@
+@View {
+  // The Layout receives the specific Page as a child (content)
+  const { content } = props || {};
+  const currentPath = typeof usePath !== 'undefined' ? usePath() : (typeof window !== 'undefined' ? window.location.pathname : '/');
+
+  return div([
+    Header({ activePath: currentPath }),
+
+    // 2. The Page Content Injected Here
+    main(content ? div(content) : div("Loading...", { className: "flex justify-center p-20" }), { className: "min-h-screen pt-6" }),
+
+    Footer()
+  ], { className: "layout flex flex-col min-h-screen font-sans bg-white text-gray-900" });
+}

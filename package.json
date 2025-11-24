@@ -1,0 +1,86 @@
+{
+  "name": "atom-framework",
+  "version": "1.5.1",
+  "description": "A revolutionary, compiler-driven, full-stack framework for maximum performance and developer simplicity.",
+  "main": "system/cli.js",
+  "bin": {
+    "atom": "./system/cli.js",
+    "atom-framework": "./system/cli.js"
+  },
+  "keywords": [
+    "framework",
+    "full-stack",
+    "ssr",
+    "isomorphic",
+    "react",
+    "nextjs-alternative",
+    "web-framework",
+    "compiler",
+    "typescript",
+    "javascript"
+  ],
+  "author": "ATOM Framework Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atom-framework/atom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/atom-framework/atom/issues"
+  },
+  "homepage": "https://atomframework.dev",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "system/**/*",
+    "package.json",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "docs/**/*",
+    "!docs/DEVELOPER_GUIDE.md",
+    "!docs/FRAMEWORK_READINESS_ANALYSIS.md",
+    "!docs/PRODUCTION_READINESS.md",
+    "!docs/TEST_WEBSITE_PROMPT.md",
+    "examples/**/*",
+    "templates/**/*"
+  ],
+  "scripts": {
+    "dev": "node system/cli.js dev",
+    "build": "node system/cli.js build",
+    "start": "node system/cli.js start",
+    "compile-engine": "node build_engine.js"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.23.0",
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0",
+    "autoprefixer": "^10.4.17",
+    "body-parser": "^1.20.2",
+    "canvas-confetti": "^1.9.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "esbuild-wasm": "^0.27.0",
+    "express": "^4.18.2",
+    "javascript-obfuscator": "^4.1.0",
+    "jimp": "^1.6.0",
+    "marked": "^11.0.0",
+    "mime-types": "^3.0.2",
+    "postcss": "^8.4.35",
+    "prompts": "^2.4.2",
+    "tailwindcss": "^3.4.17",
+    "ws": "^8.18.3"
+  },
+  "pkg": {
+    "scripts": "system_locked/**/*.js",
+    "assets": [
+      "system_locked/**/*",
+      "node_modules/**/*"
+    ],
+    "targets": [
+      "node18-macos-arm64"
+    ],
+    "outputPath": "."
+  }
+}

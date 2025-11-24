@@ -1,0 +1,7 @@
+@Title "Marketing Landing"
+@View {
+  return div([
+    h1("Marketing Page", { className: "text-4xl font-bold mb-4" }),
+    p("This page is inside a route group (marketing) but the URL is just /marketing-test", { className: "text-xl text-gray-600" })
+  ], { className: "p-12 text-center" });
+}

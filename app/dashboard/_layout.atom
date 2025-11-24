@@ -1,0 +1,41 @@
+@View {
+  const { content } = props || {};
+  
+  return div([
+    div([
+      // Sidebar
+      div([
+        div([
+          div("DASHBOARD", { className: "text-xs font-black text-gray-400 tracking-widest mb-6" }),
+          
+          a("Overview", { href: "/dashboard", className: "block py-2 text-gray-300 hover:text-white font-medium" }),
+          a("Analytics", { href: "/dashboard/analytics", className: "block py-2 text-gray-300 hover:text-white font-medium" }),
+          a("Settings", { href: "/dashboard/settings", className: "block py-2 text-gray-300 hover:text-white font-medium" }),
+          
+          div("SYSTEM", { className: "text-xs font-black text-gray-400 tracking-widest mt-8 mb-6" }),
+          a("Logs", { href: "/dashboard/logs", className: "block py-2 text-gray-300 hover:text-white font-medium" }),
+          a("Users", { href: "/dashboard/users", className: "block py-2 text-gray-300 hover:text-white font-medium" }),
+          
+          div([
+            button("Logout", { className: "mt-8 w-full py-2 bg-red-900/30 text-red-400 border border-red-900 rounded hover:bg-red-900/50 transition text-sm" })
+          ])
+        ], { className: "sticky top-24" })
+      ], { className: "w-64 bg-gray-900 min-h-screen p-6 hidden md:block border-r border-gray-800" }),
+      
+      // Content Area
+      div([
+        // Top Bar
+        div([
+          h2("Dashboard", { className: "text-2xl font-bold" }),
+          div([
+            div([
+              div("JD", { className: "w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold" })
+            ], { className: "flex items-center gap-3" })
+          ], { className: "flex items-center" })
+        ], { className: "flex justify-between items-center mb-8 pb-6 border-b border-gray-200" }),
+        
+        content
+      ], { className: "flex-1 p-8 bg-white" })
+    ], { className: "flex" })
+  ]);
+}

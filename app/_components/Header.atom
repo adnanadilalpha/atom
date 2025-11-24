@@ -1,0 +1,27 @@
+@View {
+  const { activePath } = props || {};
+  
+  const linkClass = (path) => `text-sm font-medium transition-colors ${
+    activePath === path 
+      ? "text-blue-600 font-bold" 
+      : "text-gray-600 hover:text-blue-600"
+  }`;
+
+  return nav([
+    div([
+      a("ATOM Showcase", { href: "/", className: "text-xl font-black tracking-tight text-gray-900" }),
+      
+      div([
+        a("Home", { href: "/", className: linkClass("/") }),
+        a("Products", { href: "/products", className: linkClass("/products") }),
+        a("Blog", { href: "/blog", className: linkClass("/blog") }),
+        a("Dashboard", { href: "/dashboard/home", className: linkClass("/dashboard/home") }),
+        a("Docs", { href: "/docs", className: linkClass("/docs") }),
+        a("Contact", { href: "/contact", className: "px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-bold" })
+      ], { className: "hidden md:flex items-center gap-8" }),
+      
+      // Mobile menu button placeholder
+      div("☰", { className: "md:hidden text-2xl cursor-pointer" })
+    ], { className: "flex justify-between items-center max-w-7xl mx-auto" })
+  ], { className: "bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 sticky top-0 z-50" });
+}

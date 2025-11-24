@@ -1,0 +1,49 @@
+@Title "Home | ATOM";
+@Description "Welcome to the future.";
+
+// Correct syntax for @Meta
+@Meta { 
+  name: "keywords", 
+  content: "atom, framework, speed" 
+};
+
+import confetti from 'canvas-confetti';
+@Resource DB from './db';
+
+@Flow Actions {
+  celebrate: function() { 
+    // Limit confetti to prevent memory issues
+    confetti({
+      particleCount: 50,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+  }
+};
+
+
+@View {
+  const [count, setCount] = useState(0);
+
+  return div([
+    div([
+      Image({ 
+        src: "/atom-icon.svg", 
+        alt: "ATOM Logo", 
+        width: 100, 
+        height: 100,
+        className: "mb-6" 
+      }),
+      h1("ATOM V20", { className: "text-6xl font-black text-gray-800 mb-4" }),
+      p("Instant Reload & Zero Load", { className: "text-xl text-gray-500 mb-8" }),
+      
+      button("Click (" + count + ")", { 
+        className: "bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg",
+        onclick: () => {
+            setCount(count + 1);
+            Actions.celebrate();
+        } 
+      })
+    ], { className: "flex flex-col items-center justify-center py-20" })
+  ]);
+}
