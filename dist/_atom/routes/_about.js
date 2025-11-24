@@ -67,6 +67,14 @@ const Footer = (props) => { return footer([
   ], { className: "bg-gray-900 py-12 px-6 mt-auto" }); };
 
 const FormInput = (props) => { const { label: labelText, type = "text", value, placeholder, error, required, onChange, className = "" } = props || {};
+  const safeValue = typeof value === 'string' ? value : (value === null || value === undefined ? '' : String(value));
+
+  const handleInput = (e) => {
+    const nextValue = e && e.target ? e.target.value : '';
+    if (typeof onChange === 'function') {
+      onChange(typeof nextValue === 'string' ? nextValue : '');
+    }
+  };
   
   return div([
     labelText ? label(labelText, { className: "block text-sm font-medium text-gray-700 mb-1" }) : null,
@@ -74,17 +82,17 @@ const FormInput = (props) => { const { label: labelText, type = "text", value, p
       ? textarea(null, {
           className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${className}`,
           placeholder: placeholder,
-          value: value,
+          value: safeValue,
           required: required,
-          oninput: (e) => onChange(e.target.value)
+          oninput: handleInput
         })
       : input(null, {
           type: type,
-          value: value,
+          value: safeValue,
           className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${className}`,
           placeholder: placeholder,
           required: required,
-          oninput: (e) => onChange(e.target.value)
+          oninput: handleInput
         }),
     error ? p(error, { className: "mt-1 text-sm text-red-600" }) : null
   ], { className: "w-full" }); };
@@ -198,8 +206,20 @@ function el(tag, content, props = {}) {
             attrs += ` style="${styleStr}"`;
         } else if (['autoplay', 'loop', 'muted', 'controls', 'playsinline', 'checked', 'disabled'].includes(key)) {
             if(props[key]) attrs += ` ${key}`;
+        } else if (key === 'value') {
+            // CRITICAL: Handle all edge cases for value - undefined, null, false, and string "undefined"
+            let safeVal;
+            if (props[key] === undefined || props[key] === null || props[key] === false) {
+                safeVal = '';
+            } else if (typeof props[key] === 'string' && props[key] === 'undefined') {
+                // Handle case where undefined was stringified
+                safeVal = '';
+            } else {
+                safeVal = String(props[key]);
+            }
+            if (safeVal !== '') attrs += ` value="${safeVal.replace(/"/g, '&quot;')}"`;
         } else if (props[key] !== null && props[key] !== undefined && typeof props[key] !== 'object') {
-            attrs += ` ${key}="${props[key]}"`;
+            attrs += ` ${key}="${String(props[key]).replace(/"/g, '&quot;')}"`;
         }
     });
     let innerHTML = '';

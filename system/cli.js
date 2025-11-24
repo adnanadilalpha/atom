@@ -8,6 +8,18 @@ const command = process.argv[2];
 const SYSTEM_DIR = __dirname; 
 const APP_DIR = path.join(process.cwd(), 'app');
 
+// Handle --version flag FIRST (before any other output)
+if (process.argv.includes('--version') || process.argv.includes('-v') || command === '--version' || command === '-v') {
+    try {
+        const packageJson = require(path.join(SYSTEM_DIR, '../package.json'));
+        console.log(packageJson.version);
+        process.exit(0);
+    } catch (e) {
+        console.log('1.5.1'); // Fallback version
+        process.exit(0);
+    }
+}
+
 console.log(`⚛️  ATOM CLI - Command: ${command || 'none'}`);
 
 // --- HELPER: RUN COMPILER ---
@@ -432,17 +444,6 @@ function deploy() {
     setupDeployment(platform);
 }
 
-// Handle --version flag
-if (process.argv.includes('--version') || process.argv.includes('-v') || command === '--version' || command === '-v') {
-    try {
-        const packageJson = require(path.join(SYSTEM_DIR, '../package.json'));
-        console.log(packageJson.version);
-        process.exit(0);
-    } catch (e) {
-        console.log('1.5.0'); // Fallback version
-        process.exit(0);
-    }
-}
 
 switch (command) {
     case 'build': build(); break;

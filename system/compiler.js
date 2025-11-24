@@ -27,7 +27,7 @@ process.on('unhandledRejection', (reason, promise) => {
 const APP_DIR = path.join(process.cwd(), 'app');
 const COMPONENT_DIR = path.join(APP_DIR, '_components');
 const DIST_DIR = path.join(process.cwd(), 'dist');
-const IS_DEV = process.argv.some(arg => arg.includes('dev'));
+const IS_DEV = process.argv.includes('--dev') || process.argv.some(arg => arg.includes('dev'));
 
 if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
 
@@ -973,11 +973,13 @@ const devToolsCode = `
 `;
 
 // 1. PROCESS COMPONENTS
+const componentNames = [];
 if (fs.existsSync(COMPONENT_DIR)) {
     const compFiles = fs.readdirSync(COMPONENT_DIR).filter(f => f.endsWith('.atom'));
     compFiles.forEach(file => {
         const name = file.replace('.atom', '');
-        console.log(`   -> 🧩 Component: ${name}`);
+        componentNames.push(name);
+        if (!IS_DEV) console.log(`   -> 🧩 Component: ${name}`);
         
         const code = fs.readFileSync(path.join(COMPONENT_DIR, file), 'utf-8');
         const viewBlock = extractBlock(code, '@View');
@@ -1123,6 +1125,7 @@ layoutMap.forEach((layout, layoutPath) => {
 // 3. ROUTES
 const allFiles = getAllFiles(APP_DIR);
 let hasCustom404 = false;
+const routeNames = [];
 
 allFiles.forEach(filePath => {
     const fileName = path.basename(filePath);
@@ -1199,7 +1202,8 @@ allFiles.forEach(filePath => {
         // This will be handled in the route matching logic
     }
 
-    console.log(`   -> 📄 Route: ${routePattern}`);
+    routeNames.push(routePattern);
+    if (!IS_DEV) console.log(`   -> 📄 Route: ${routePattern}`);
     const code = fs.readFileSync(filePath, 'utf-8');
     
     // Run error detection
@@ -1542,8 +1546,20 @@ function el(tag, content, props = {}) {
             attrs += \` style="\${styleStr}"\`;
         } else if (['autoplay', 'loop', 'muted', 'controls', 'playsinline', 'checked', 'disabled'].includes(key)) {
             if(props[key]) attrs += \` \${key}\`;
+        } else if (key === 'value') {
+            // CRITICAL: Handle all edge cases for value - undefined, null, false, and string "undefined"
+            let safeVal;
+            if (props[key] === undefined || props[key] === null || props[key] === false) {
+                safeVal = '';
+            } else if (typeof props[key] === 'string' && props[key] === 'undefined') {
+                // Handle case where undefined was stringified
+                safeVal = '';
+            } else {
+                safeVal = String(props[key]);
+            }
+            if (safeVal !== '') attrs += \` value="\${safeVal.replace(/"/g, '&quot;')}"\`;
         } else if (props[key] !== null && props[key] !== undefined && typeof props[key] !== 'object') {
-            attrs += \` \${key}="\${props[key]}"\`;
+            attrs += \` \${key}="\${String(props[key]).replace(/"/g, '&quot;')}"\`;
         }
     });
     let innerHTML = '';
@@ -1842,6 +1858,15 @@ compileCSS().then((finalCSS) => {
     } catch (e) {
         console.error("❌ Bundling Failed:", e.message);
         if (e.errors) e.errors.forEach(err => console.error("  ", err.text));
+    }
+    
+    // Show summary in dev mode
+    if (IS_DEV && (componentNames.length > 0 || routeNames.length > 0)) {
+        if (componentNames.length > 0) {
+            console.log(`   📦 ${componentNames.length} component${componentNames.length > 1 ? 's' : ''}, ${routeNames.length} route${routeNames.length > 1 ? 's' : ''}`);
+        } else {
+            console.log(`   📦 ${routeNames.length} route${routeNames.length > 1 ? 's' : ''}`);
+        }
     }
     
     console.log("✅ Build Complete!");

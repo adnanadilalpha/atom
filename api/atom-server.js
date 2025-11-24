@@ -5,4 +5,3 @@ require('../dist/server.js');
 require('../dist/ssr.js');
 
 module.exports = require('../system/runner');
-

@@ -1016,6 +1016,12 @@ Deploy to edge networks:
 
 ## Deployment
 
+### Workflow Overview
+
+1. Run `atom deploy <platform>` locally to scaffold configs, entry files, and npm scripts.
+2. Commit the generated files so Git-based hosts (like Vercel) can deploy straight from your repo without requiring the platform CLI on every machine.
+3. Optionally, use the provided npm scripts (e.g. `npm run deploy:vercel`) if you prefer deploying via the provider CLI after generation.
+
 ### Vercel
 
 ```bash

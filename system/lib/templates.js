@@ -113,6 +113,52 @@ if (!customElements.get('atom-cursor')) customElements.define('atom-cursor', Ato
 
 // --- 2. DOM HELPERS (The Logic Fixes) ---
 const sharedHelpers = `
+// Track inputs that have been modified by user (React-style input preservation)
+let _modifiedInputs = new WeakMap(); // Maps element -> last known DOM value
+let _inputFocusTimeouts = new WeakMap();
+
+// Mark an input as modified by user
+function markInputModified(element) {
+    if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')) {
+        // Store the current DOM value as the "user's value"
+        _modifiedInputs.set(element, element.value || '');
+        // Clear existing timeout
+        const existingTimeout = _inputFocusTimeouts.get(element);
+        if (existingTimeout) clearTimeout(existingTimeout);
+    }
+}
+
+// Mark input as focused (user might type)
+function markInputFocused(element) {
+    if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')) {
+        markInputModified(element);
+    }
+}
+
+// Mark input as blurred (user finished with this input)
+function markInputBlurred(element) {
+    if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')) {
+        // Keep the modified value for a bit longer (500ms) to allow state to catch up
+        const timeout = setTimeout(() => {
+            _modifiedInputs.delete(element);
+            _inputFocusTimeouts.delete(element);
+        }, 500);
+        const existingTimeout = _inputFocusTimeouts.get(element);
+        if (existingTimeout) clearTimeout(existingTimeout);
+        _inputFocusTimeouts.set(element, timeout);
+    }
+}
+
+// Check if an input has been modified by user
+function isInputModified(element) {
+    return element && _modifiedInputs.has(element);
+}
+
+// Get the last known user value for an input
+function getInputUserValue(element) {
+    return _modifiedInputs.get(element) || (element ? element.value : '');
+}
+
 function el(tag, content, props = {}) {
     const element = document.createElement(tag);
     
@@ -152,7 +198,36 @@ function el(tag, content, props = {}) {
         const val = props[key];
         
         if (key.startsWith('on')) {
-            element[key.toLowerCase()] = val;
+            // For input/textarea, wrap handlers to track user modifications
+            if ((tag === 'input' || tag === 'textarea')) {
+                if (key === 'oninput' || key === 'onInput') {
+                    element.oninput = (e) => {
+                        markInputModified(element);
+                        if (val) val(e);
+                    };
+                } else if (key === 'onfocus' || key === 'onFocus') {
+                    element.onfocus = (e) => {
+                        markInputFocused(element);
+                        if (val) val(e);
+                    };
+                } else if (key === 'onblur' || key === 'onBlur') {
+                    element.onblur = (e) => {
+                        markInputBlurred(element);
+                        if (val) val(e);
+                    };
+                } else {
+                    element[key.toLowerCase()] = val;
+                }
+            } else if (tag === 'form' && (key === 'onsubmit' || key === 'onSubmit')) {
+                // For forms, wrap onsubmit to prevent default page refresh
+                element.onsubmit = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (val) val(e);
+                };
+            } else {
+                element[key.toLowerCase()] = val;
+            }
         } else if (key === 'style') {
             if (val && typeof val === 'object' && !Array.isArray(val)) {
                 Object.assign(element.style, val);
@@ -174,8 +249,22 @@ function el(tag, content, props = {}) {
         }
         // INPUT VALUE (Force Property Update)
         else if (key === 'value') {
-            element.value = val; // Critical for Input Typing
-            element.setAttribute('value', val);
+            // CRITICAL: Handle all edge cases - undefined, null, false, and string "undefined"
+            let safeVal;
+            if (val === undefined || val === null || val === false) {
+                safeVal = '';
+            } else if (typeof val === 'string' && val === 'undefined') {
+                // Handle case where undefined was stringified
+                safeVal = '';
+            } else {
+                safeVal = String(val);
+            }
+            element.value = safeVal; // Critical for Input Typing
+            if (safeVal === '') {
+                element.removeAttribute('value');
+            } else {
+                element.setAttribute('value', safeVal);
+            }
         }
         // STANDARD ATTRIBUTES (skip objects/arrays)
         else if (val !== null && val !== undefined && typeof val !== 'object') {
@@ -230,6 +319,51 @@ const pre = (c, p) => el('pre', c, p);
 const blockquote = (c, p) => el('blockquote', c, p);
 const hr = (p) => el('hr', null, p);
 const br = () => el('br', null);
+
+const figure = (c, p) => el('figure', c, p);
+const figcaption = (c, p) => el('figcaption', c, p);
+const picture = (c, p) => el('picture', c, p);
+const source = (p) => el('source', null, p);
+const video = (c, p) => el('video', c, p);
+const audio = (c, p) => el('audio', c, p);
+const canvas = (c, p) => el('canvas', c, p);
+const iframe = (c, p) => el('iframe', c, p);
+const summary = (c, p) => el('summary', c, p);
+const details = (c, p) => el('details', c, p);
+const dialog = (c, p) => el('dialog', c, p);
+const fieldset = (c, p) => el('fieldset', c, p);
+const legend = (c, p) => el('legend', c, p);
+const progress = (c, p) => el('progress', c, p);
+const meter = (c, p) => el('meter', c, p);
+const datalist = (c, p) => el('datalist', c, p);
+const optgroup = (c, p) => el('optgroup', c, p);
+const sup = (c, p) => el('sup', c, p);
+const sub = (c, p) => el('sub', c, p);
+const mark = (c, p) => el('mark', c, p);
+const time = (c, p) => el('time', c, p);
+const address = (c, p) => el('address', c, p);
+const q = (c, p) => el('q', c, p);
+const cite = (c, p) => el('cite', c, p);
+const ins = (c, p) => el('ins', c, p);
+const del = (c, p) => el('del', c, p);
+const abbr = (c, p) => el('abbr', c, p);
+const kbd = (c, p) => el('kbd', c, p);
+const samp = (c, p) => el('samp', c, p);
+const varTag = (c, p) => el('var', c, p);
+const template = (c, p) => el('template', c, p);
+const slot = (c, p) => el('slot', c, p);
+const svg = (c, p) => el('svg', c, p);
+const path = (c, p) => el('path', c, p);
+const circle = (c, p) => el('circle', c, p);
+const rect = (c, p) => el('rect', c, p);
+const line = (c, p) => el('line', c, p);
+const polyline = (c, p) => el('polyline', c, p);
+const polygon = (c, p) => el('polygon', c, p);
+const g = (c, p) => el('g', c, p);
+const defs = (c, p) => el('defs', c, p);
+const linearGradient = (c, p) => el('linearGradient', c, p);
+const stop = (c, p) => el('stop', c, p);
+const clipPath = (c, p) => el('clipPath', c, p);
 
 const img = (props) => el('img', null, props);
 const html = (c, p) => el('html', c, p);
@@ -307,7 +441,6 @@ const Video = (arg1, arg2) => {
 };
 
 const Audio = (props) => el('audio', null, props);
-const source = (props) => el('source', null, props);
 
 const a = (text, props) => {
     const safeProps = props || {};
@@ -355,15 +488,50 @@ export function useState(initialValue) {
         _state[cursor] = initialValue;
     }
     
+    // Ensure state is accessible via window for debugging
+    if (typeof window !== 'undefined') {
+        window.__ATOM_STATE__ = _state;
+    }
+    
     const setState = (newValue) => {
         try {
-            // Validate state update
-            if (cursor >= _state.length) {
-                console.error('useState: Attempted to update state at invalid cursor position', cursor);
-                return;
+            // Ensure state array exists
+            if (!Array.isArray(_state)) {
+                _state = [];
+                window.__ATOM_STATE__ = _state;
             }
-        _state[cursor] = newValue;
-            scheduleRender();
+            
+            // Ensure cursor position exists in state array
+            if (cursor >= _state.length) {
+                // Extend array to accommodate cursor position
+                while (_state.length <= cursor) {
+                    _state.push(undefined);
+                }
+            }
+            
+            // Handle function updates (like React's setState)
+            let valueToSet;
+            if (typeof newValue === 'function') {
+                // Function updater: call with current state value
+                const currentValue = _state[cursor];
+                valueToSet = newValue(currentValue);
+            } else {
+                // Direct value update
+                valueToSet = newValue;
+            }
+            
+            // Only update if value actually changed (optimization)
+            if (_state[cursor] !== valueToSet) {
+                const oldVal = _state[cursor];
+                _state[cursor] = valueToSet;
+                // Ensure window state is synced
+                window.__ATOM_STATE__ = _state;
+                // Debug logging (only in dev mode)
+                if (typeof window !== 'undefined' && window.location && window.location.hostname === 'localhost') {
+                    console.log('[ATOM useState] State updated at cursor', cursor, ':', oldVal, '→', valueToSet, _state);
+                }
+                scheduleRender();
+            }
         } catch(e) {
             console.error('useState setState error:', e);
             throw new Error(\`useState setState failed: \${e.message}\`);
@@ -672,13 +840,18 @@ function diff(parent, newEl, oldEl) {
         const name = attr.name;
         const value = attr.value;
         
-        if (oldEl.getAttribute(name) !== value) {
+        // CRITICAL: Skip value attribute sync if input/textarea has been modified by user
+        if (name === 'value' && (oldEl.tagName === 'INPUT' || oldEl.tagName === 'TEXTAREA') && (isInputModified(oldEl) || oldEl === document.activeElement)) {
+            // Don't sync value attribute - preserve user input
+            // Value will be handled separately below
+        } else if (oldEl.getAttribute(name) !== value) {
             oldEl.setAttribute(name, value);
         }
         
         // SYNC PROPERTIES (CRITICAL FIX FOR INPUTS/VIDEO)
-        if (['value', 'checked', 'muted', 'autoplay', 'loop'].includes(name)) {
-             oldEl[name] = name === 'value' ? value : true;
+        // Skip value sync here - handled separately below to preserve user input
+        if (['checked', 'muted', 'autoplay', 'loop'].includes(name)) {
+             oldEl[name] = true;
                     }
                 } catch(e) {
                     console.warn('diff: Error setting attribute', attr.name, e);
@@ -688,19 +861,102 @@ function diff(parent, newEl, oldEl) {
             console.warn('diff: Error processing new attributes', e);
         }
 
-    // Sync Input Value explicitly if it differs (Fixes typing issue)
+    // Sync Input/Textarea Value - preserve user input (React-style)
         try {
-    if (newEl.tagName === 'INPUT' && newEl.value !== oldEl.value) {
-        oldEl.value = newEl.value;
+    if (newEl.tagName === 'INPUT' || newEl.tagName === 'TEXTAREA') {
+        const newValue = (newEl.value === false || newEl.value === null || newEl.value === undefined) ? '' : String(newEl.value || ''); // State value
+        const oldValue = (oldEl.value === false || oldEl.value === null || oldEl.value === undefined) ? '' : String(oldEl.value || ''); // DOM value
+        
+        // CRITICAL: If input has been modified by user, preserve their value
+        if (isInputModified(oldEl)) {
+            const userValue = getInputUserValue(oldEl);
+            // If user is currently focused on this input, always preserve
+            if (oldEl === document.activeElement) {
+                // User is actively typing - preserve DOM value completely
+                newEl.value = oldValue;
+                // Update stored user value
+                _modifiedInputs.set(oldEl, oldValue);
+            } else {
+                // Input was modified but user moved away
+                // Only sync from state if state value matches what user typed (state caught up)
+                // Otherwise, preserve user's value
+                if (newValue === userValue || newValue === oldValue) {
+                    // State has caught up - safe to sync
+                    oldEl.value = newValue;
+                } else {
+                    // State hasn't caught up yet - preserve user's value
+                    oldEl.value = userValue;
+                    newEl.value = userValue;
+                }
+            }
+        } else if (oldEl === document.activeElement) {
+            // Input is focused but not yet modified - preserve DOM value
+            newEl.value = oldValue;
+        } else {
+            // Normal case: input not modified, not focused - sync from state
+            if (oldValue !== newValue) {
+                oldEl.value = newValue;
+            }
+        }
             }
         } catch(e) {
             console.warn('diff: Error syncing input value', e);
     }
 
-    // Sync Events
+    // Sync Events (with modification tracking for inputs)
         try {
     if (newEl.onclick !== oldEl.onclick) oldEl.onclick = newEl.onclick;
-    if (newEl.oninput !== oldEl.oninput) oldEl.oninput = newEl.oninput;
+    // Handle form onsubmit - prevent default page refresh
+    if (oldEl.tagName === 'FORM' && newEl.onsubmit !== oldEl.onsubmit) {
+        if (newEl.onsubmit) {
+            const originalHandler = newEl.onsubmit;
+            oldEl.onsubmit = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (originalHandler) originalHandler(e);
+            };
+        } else {
+            oldEl.onsubmit = null;
+        }
+    } else if ((oldEl.tagName === 'INPUT' || oldEl.tagName === 'TEXTAREA')) {
+        // Wrap input events to track user modifications
+        if (newEl.oninput !== oldEl.oninput) {
+            if (newEl.oninput) {
+                const originalHandler = newEl.oninput;
+                oldEl.oninput = (e) => {
+                    markInputModified(oldEl);
+                    if (originalHandler) originalHandler(e);
+                };
+            } else {
+                oldEl.oninput = null;
+            }
+        }
+        if (newEl.onfocus !== oldEl.onfocus) {
+            if (newEl.onfocus) {
+                const originalHandler = newEl.onfocus;
+                oldEl.onfocus = (e) => {
+                    markInputFocused(oldEl);
+                    if (originalHandler) originalHandler(e);
+                };
+            } else {
+                oldEl.onfocus = null;
+            }
+        }
+        if (newEl.onblur !== oldEl.onblur) {
+            if (newEl.onblur) {
+                const originalHandler = newEl.onblur;
+                oldEl.onblur = (e) => {
+                    markInputBlurred(oldEl);
+                    if (originalHandler) originalHandler(e);
+                };
+            } else {
+                oldEl.onblur = null;
+            }
+        }
+    } else {
+        // Non-input elements - sync normally
+        if (newEl.oninput !== oldEl.oninput) oldEl.oninput = newEl.oninput;
+    }
         } catch(e) {
             console.warn('diff: Error syncing events', e);
         }
@@ -875,7 +1131,16 @@ export function renderApp() {
     _isRendering = true;
     
     try {
-        // Reset cursors for new render cycle
+        // Ensure state array exists and is synced
+        if (!Array.isArray(_state)) {
+            _state = [];
+            window.__ATOM_STATE__ = _state;
+        } else {
+            // Sync window state (in case it was modified externally)
+            window.__ATOM_STATE__ = _state;
+        }
+        
+        // Reset cursors for new render cycle (state persists, cursor resets)
     _cursor = 0;
         _effectCursor = 0;
         _refCursor = 0;
@@ -1098,17 +1363,37 @@ module.exports.getSSRRuntime = (imports, layoutCode, routes, layoutHierarchyCode
         let attrs = "";
         Object.keys(props).forEach(key => {
             if (key.startsWith('on')) return;
-            if (key === 'className') attrs += \` class="\${props[key]}"\`;
+            const value = props[key];
+            if (key === 'className') {
+                if (value) attrs += \` class="\${value}"\`;
+            }
             else if (key === 'style') {
-                const styleStr = Object.entries(props[key]).map(([k,v]) => \`\${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:\${v}\`).join(';');
-                attrs += \` style="\${styleStr}"\`;
+                if (value && typeof value === 'object') {
+                    const styleStr = Object.entries(value).map(([k,v]) => \`\${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:\${v}\`).join(';');
+                    attrs += \` style="\${styleStr}"\`;
+                }
             } else if (key === 'innerHTML') {} 
             
             // Handle Boolean Attrs for SSR
             else if (['autoplay', 'loop', 'muted', 'controls', 'playsinline', 'checked', 'disabled'].includes(key)) {
-                if(props[key]) attrs += \` \${key}\`;
+                if(value) attrs += \` \${key}\`;
             }
-            else attrs += \` \${key}="\${props[key]}"\`;
+            else if (key === 'value') {
+                // CRITICAL: Handle all edge cases - undefined, null, false, and string "undefined"
+                let safeVal;
+                if (value === undefined || value === null || value === false) {
+                    safeVal = '';
+                } else if (typeof value === 'string' && value === 'undefined') {
+                    // Handle case where undefined was stringified
+                    safeVal = '';
+                } else {
+                    safeVal = String(value);
+                }
+                if (safeVal !== '') attrs += \` value="\${safeVal.replace(/"/g, '&quot;')}"\`;
+            }
+            else if (value !== null && value !== undefined) {
+                attrs += \` \${key}="\${String(value).replace(/"/g, '&quot;')}"\`;
+            }
         });
         // Handle content - skip null/undefined/false values
         // Note: For SSR, content is typically a string (HTML), not a Node
@@ -1174,6 +1459,49 @@ module.exports.getSSRRuntime = (imports, layoutCode, routes, layoutHierarchyCode
     const blockquote = (c, p) => el('blockquote', c, p);
     const hr = (p) => el('hr', null, p);
     const br = () => el('br', null);
+    const figure = (c, p) => el('figure', c, p);
+    const figcaption = (c, p) => el('figcaption', c, p);
+    const picture = (c, p) => el('picture', c, p);
+    const video = (c, p) => el('video', c, p);
+    const audio = (c, p) => el('audio', c, p);
+    const canvas = (c, p) => el('canvas', c, p);
+    const iframe = (c, p) => el('iframe', c, p);
+    const summary = (c, p) => el('summary', c, p);
+    const details = (c, p) => el('details', c, p);
+    const dialog = (c, p) => el('dialog', c, p);
+    const fieldset = (c, p) => el('fieldset', c, p);
+    const legend = (c, p) => el('legend', c, p);
+    const progress = (c, p) => el('progress', c, p);
+    const meter = (c, p) => el('meter', c, p);
+    const datalist = (c, p) => el('datalist', c, p);
+    const optgroup = (c, p) => el('optgroup', c, p);
+    const sup = (c, p) => el('sup', c, p);
+    const sub = (c, p) => el('sub', c, p);
+    const mark = (c, p) => el('mark', c, p);
+    const time = (c, p) => el('time', c, p);
+    const address = (c, p) => el('address', c, p);
+    const q = (c, p) => el('q', c, p);
+    const cite = (c, p) => el('cite', c, p);
+    const ins = (c, p) => el('ins', c, p);
+    const del = (c, p) => el('del', c, p);
+    const abbr = (c, p) => el('abbr', c, p);
+    const kbd = (c, p) => el('kbd', c, p);
+    const samp = (c, p) => el('samp', c, p);
+    const varTag = (c, p) => el('var', c, p);
+    const templateEl = (c, p) => el('template', c, p);
+    const slotEl = (c, p) => el('slot', c, p);
+    const svg = (c, p) => el('svg', c, p);
+    const pathEl = (c, p) => el('path', c, p);
+    const circle = (c, p) => el('circle', c, p);
+    const rectEl = (c, p) => el('rect', c, p);
+    const lineEl = (c, p) => el('line', c, p);
+    const polyline = (c, p) => el('polyline', c, p);
+    const polygon = (c, p) => el('polygon', c, p);
+    const gEl = (c, p) => el('g', c, p);
+    const defsEl = (c, p) => el('defs', c, p);
+    const linearGradient = (c, p) => el('linearGradient', c, p);
+    const stopEl = (c, p) => el('stop', c, p);
+    const clipPath = (c, p) => el('clipPath', c, p);
     
     const img = (props) => el('img', null, props);
     const html = (c, p) => el('html', c, p);
@@ -1473,7 +1801,7 @@ module.exports.getSSRRuntime = (imports, layoutCode, routes, layoutHierarchyCode
         try {
             // Stream HTML head first
             const metaTags = (match.meta || []).map(m => \`<meta name="\${m.name}" content="\${m.content}">\`).join('\\n');
-            yield \`<!DOCTYPE html><html><head><title>\${match.title || "Atom App"}</title>\${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">\`;
+            yield \`<!DOCTYPE html><html><head><title>\${match.title || "Atom App"}</title>\${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">\`;
             
             // Stream component content
             const componentProps = { params: match.params || {} };

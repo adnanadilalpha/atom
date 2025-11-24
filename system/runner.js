@@ -6,10 +6,9 @@ const path = require('path');
 const fs = require('fs');
 
 // --- ROBUST LIBRARY LOADING ---
-let Jimp;
+let sharp;
 try {
-    const _jimp = require('jimp');
-    Jimp = _jimp.Jimp || _jimp;
+    sharp = require('sharp');
 } catch (e) {
     console.warn("⚠️ Image Optimization Disabled:", e.message);
 }
@@ -162,8 +161,8 @@ app.get('/_atom/image', async (req, res) => {
     try {
         const imagePath = path.join(PUBLIC_DIR, url);
         if (!fs.existsSync(imagePath)) return res.status(404).send("Not found");
-        if (!Jimp) {
-            // Fallback: serve original if Jimp unavailable
+        if (!sharp) {
+            // Fallback: serve original if sharp unavailable
             return res.sendFile(imagePath);
         }
 
@@ -181,71 +180,86 @@ app.get('/_atom/image', async (req, res) => {
             return res.send(cached.buffer);
         }
 
-        const image = await Jimp.read(imagePath);
-        const width = w ? parseInt(w) : undefined;
-        const height = h ? parseInt(h) : undefined;
+        const width = w ? parseInt(w) : null;
+        const height = h ? parseInt(h) : null;
         const quality = q ? parseInt(q) : 85;
-        
-        // Resize if needed
-        if (width || height) {
-            try { 
-                image.resize({ w: width || Jimp.AUTO, h: height || Jimp.AUTO, mode: Jimp.RESIZE_BILINEAR }); 
-            } catch (err) { 
-                image.resize(width || Jimp.AUTO, height || Jimp.AUTO); 
-            }
-        }
-        
-        // Format detection and conversion
-        const originalFormat = image.getExtension();
         let targetFormat = fmt || 'auto';
-        let mimeType = 'image/jpeg';
-        let format = 'image/jpeg';
         
         // Auto-detect best format based on Accept header
         if (targetFormat === 'auto') {
             const accept = req.headers.accept || '';
-            if (accept.includes('image/avif')) {
+            // Check AVIF support first, but fallback to WebP if not available
+            if (accept.includes('image/avif') && sharp.format.avif) {
                 targetFormat = 'avif';
             } else if (accept.includes('image/webp')) {
                 targetFormat = 'webp';
             } else {
-                targetFormat = originalFormat === 'png' ? 'png' : 'jpeg';
+                // Detect from file extension
+                const ext = path.extname(url).toLowerCase();
+                targetFormat = ext === '.png' ? 'png' : 'jpeg';
             }
         }
         
-        // Convert format
-        if (targetFormat === 'webp' && Jimp.MIME_WEBP) {
-            format = Jimp.MIME_WEBP;
-            mimeType = 'image/webp';
-        } else if (targetFormat === 'png') {
-            format = Jimp.MIME_PNG;
-            mimeType = 'image/png';
-            // PNG doesn't use quality, but we'll keep it for consistency
-        } else {
-            format = Jimp.MIME_JPEG;
-            mimeType = 'image/jpeg';
+        // Fallback AVIF to WebP if not supported
+        if (targetFormat === 'avif' && !sharp.format.avif) {
+            targetFormat = 'webp';
         }
         
-        const buffer = await new Promise((resolve, reject) => {
-            image.quality(quality).getBuffer(format, (err, b) => err ? reject(err) : resolve(b));
-        });
+        // Build Sharp pipeline
+        let pipeline = sharp(imagePath);
+        
+        // Resize if needed
+        if (width || height) {
+            pipeline = pipeline.resize(width, height, {
+                fit: 'inside',
+                withoutEnlargement: true
+            });
+        }
+        
+        // Set format and quality
+        const formatMap = {
+            'jpeg': { format: 'jpeg', mime: 'image/jpeg' },
+            'jpg': { format: 'jpeg', mime: 'image/jpeg' },
+            'png': { format: 'png', mime: 'image/png' },
+            'webp': { format: 'webp', mime: 'image/webp' },
+            'avif': { format: 'avif', mime: 'image/avif' }
+        };
+        
+        const formatInfo = formatMap[targetFormat.toLowerCase()] || formatMap['jpeg'];
+        
+        // Apply format and quality
+        if (formatInfo.format === 'jpeg') {
+            pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+        } else if (formatInfo.format === 'png') {
+            pipeline = pipeline.png({ quality, compressionLevel: 9 });
+        } else if (formatInfo.format === 'webp') {
+            pipeline = pipeline.webp({ quality });
+        } else if (formatInfo.format === 'avif') {
+            pipeline = pipeline.avif({ quality });
+        }
+        
+        const buffer = await pipeline.toBuffer();
 
         // Cache the result (limit cache size to 100 items)
         if (imageCache.size > 100) {
             const firstKey = imageCache.keys().next().value;
             imageCache.delete(firstKey);
         }
-        imageCache.set(hash, { buffer, contentType: mimeType });
+        imageCache.set(hash, { buffer, contentType: formatInfo.mime });
 
-        res.set('Content-Type', mimeType);
+        res.set('Content-Type', formatInfo.mime);
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
         res.set('ETag', hash);
-        if (IS_DEV) console.log(`🖼️  Image Optimized: ${url} → ${width || 'auto'}x${height || 'auto'} ${mimeType} (${Math.round(buffer.length/1024)}KB)`);
+        if (IS_DEV) console.log(`🖼️  Image Optimized: ${url} → ${width || 'auto'}x${height || 'auto'} ${formatInfo.mime} (${Math.round(buffer.length/1024)}KB)`);
         res.send(buffer);
     } catch (e) {
         // Fallback to original file
-        if (IS_DEV) console.log(`⚠️  Image Optimization Failed: ${url}, serving original`);
-        res.sendFile(path.join(PUBLIC_DIR, url));
+        if (IS_DEV) console.log(`⚠️  Image Optimization Failed: ${url}, serving original:`, e.message);
+        try {
+            res.sendFile(path.join(PUBLIC_DIR, url));
+        } catch (err) {
+            res.status(500).send("Image processing error");
+        }
     }
 });
 
@@ -444,7 +458,7 @@ app.get(/(.*)/, async (req, res) => {
             const bundleTag = USE_STATIC_BUNDLE
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
-            const fullHTML = `<!DOCTYPE html><html><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
+            const fullHTML = `<!DOCTYPE html><html><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
             
             // Cache static pages indefinitely
             if (isStatic) {

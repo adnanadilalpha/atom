@@ -41,11 +41,11 @@ Complete guide to all ATOM Framework documentation, organized by topic.
 
 - [Deployment Guide](./DEPLOYMENT.md) - Deploy to Vercel, Cloudflare, Docker
 - [Production Guide](./PRODUCTION.md) - Production optimization and monitoring
-- **[Production Readiness](./PRODUCTION_READINESS.md)** - Is ATOM ready for production? Complete assessment
+- **Production Readiness** - Internal-only assessment (not included in open-source distribution)
 
 ## 🛠️ Development
 
-- [Developer Guide](./DEVELOPER_GUIDE.md) - Framework development and contribution
+- **Developer Guide** - Internal-only framework notes (kept out of the public repo)
 - [Troubleshooting](./TROUBLESHOOTING.md) - Common issues and solutions
 
 ## 📖 Reference

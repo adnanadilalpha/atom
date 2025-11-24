@@ -2,3 +2,8 @@ node_modules
 atom-engine # so it doesn’t get re-added
 .vercel
 public/_atom/
+internal_docs/
+node
+npm
+system_locked/compiler.js
+system_locked/runner.js

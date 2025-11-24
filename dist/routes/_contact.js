@@ -67,6 +67,14 @@ const Footer = (props) => { return footer([
   ], { className: "bg-gray-900 py-12 px-6 mt-auto" }); };
 
 const FormInput = (props) => { const { label: labelText, type = "text", value, placeholder, error, required, onChange, className = "" } = props || {};
+  const safeValue = typeof value === 'string' ? value : (value === null || value === undefined ? '' : String(value));
+
+  const handleInput = (e) => {
+    const nextValue = e && e.target ? e.target.value : '';
+    if (typeof onChange === 'function') {
+      onChange(typeof nextValue === 'string' ? nextValue : '');
+    }
+  };
   
   return div([
     labelText ? label(labelText, { className: "block text-sm font-medium text-gray-700 mb-1" }) : null,
@@ -74,17 +82,17 @@ const FormInput = (props) => { const { label: labelText, type = "text", value, p
       ? textarea(null, {
           className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${className}`,
           placeholder: placeholder,
-          value: value,
+          value: safeValue,
           required: required,
-          oninput: (e) => onChange(e.target.value)
+          oninput: handleInput
         })
       : input(null, {
           type: type,
-          value: value,
+          value: safeValue,
           className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${className}`,
           placeholder: placeholder,
           required: required,
-          oninput: (e) => onChange(e.target.value)
+          oninput: handleInput
         }),
     error ? p(error, { className: "mt-1 text-sm text-red-600" }) : null
   ], { className: "w-full" }); };
@@ -198,8 +206,20 @@ function el(tag, content, props = {}) {
             attrs += ` style="${styleStr}"`;
         } else if (['autoplay', 'loop', 'muted', 'controls', 'playsinline', 'checked', 'disabled'].includes(key)) {
             if(props[key]) attrs += ` ${key}`;
+        } else if (key === 'value') {
+            // CRITICAL: Handle all edge cases for value - undefined, null, false, and string "undefined"
+            let safeVal;
+            if (props[key] === undefined || props[key] === null || props[key] === false) {
+                safeVal = '';
+            } else if (typeof props[key] === 'string' && props[key] === 'undefined') {
+                // Handle case where undefined was stringified
+                safeVal = '';
+            } else {
+                safeVal = String(props[key]);
+            }
+            if (safeVal !== '') attrs += ` value="${safeVal.replace(/"/g, '&quot;')}"`;
         } else if (props[key] !== null && props[key] !== undefined && typeof props[key] !== 'object') {
-            attrs += ` ${key}="${props[key]}"`;
+            attrs += ` ${key}="${String(props[key]).replace(/"/g, '&quot;')}"`;
         }
     });
     let innerHTML = '';
@@ -313,15 +333,20 @@ const PageContent = (props) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submittedData, setSubmittedData] = useState(null);
   const [serverError, setServerError] = useState(null);
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Invalid email format";
-    if (!formData.message.trim()) newErrors.message = "Message is required";
-    else if (formData.message.length < 10) newErrors.message = "Message too short";
+    const name = (formData.name || '').trim();
+    const email = (formData.email || '').trim();
+    const message = (formData.message || '').trim();
+    
+    if (!name) newErrors.name = "Name is required";
+    if (!email) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = "Invalid email format";
+    if (!message) newErrors.message = "Message is required";
+    else if (message.length < 10) newErrors.message = "Message too short";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -329,14 +354,35 @@ const PageContent = (props) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    
+    // Read current values directly from form inputs (more reliable than state)
+    const form = e.target;
+    const currentData = {
+      name: (form.querySelector('input[type="text"]')?.value || '').trim(),
+      email: (form.querySelector('input[type="email"]')?.value || '').trim(),
+      message: (form.querySelector('textarea')?.value || '').trim()
+    };
+    
+    // Validate with current form values
+    const newErrors = {};
+    if (!currentData.name) newErrors.name = "Name is required";
+    if (!currentData.email) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentData.email)) newErrors.email = "Invalid email format";
+    if (!currentData.message) newErrors.message = "Message is required";
+    else if (currentData.message.length < 10) newErrors.message = "Message too short";
+    
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     setLoading(true);
     setServerError(null);
     
     try {
-      const result = await Actions.secure_submitContact(formData);
+      // Use current form values for submission
+      const result = await Actions.secure_submitContact(currentData);
+      setSubmittedData(currentData);
       setSuccess(true);
+      setErrors({});
       setFormData({ name: '', email: '', message: '' });
     } catch (err) {
       setServerError(err);
@@ -346,8 +392,9 @@ const PageContent = (props) => {
   };
 
   const updateField = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    if (errors[field]) setErrors({ ...errors, [field]: null });
+    const safeValue = typeof value === 'string' ? value : '';
+    setFormData(prev => ({ ...prev, [field]: safeValue }));
+    setErrors(prev => ({ ...prev, [field]: null }));
   };
 
   return div([
@@ -375,11 +422,34 @@ const PageContent = (props) => {
         div([
           success ? div([
             div("✅", { className: "text-4xl mb-4" }),
-            h3("Message Sent!", { className: "text-2xl font-bold mb-2" }),
+            h3("Message Sent Successfully!", { className: "text-2xl font-bold mb-2 text-green-600" }),
             p("Thank you for reaching out. We'll be in touch shortly.", { className: "text-gray-600 mb-6" }),
-            button("Send Another", { 
+            
+            // Display submitted data for verification
+            submittedData ? div([
+              h4("Submitted Data:", { className: "text-lg font-semibold mb-3 text-gray-800" }),
+              div([
+                div([
+                  strong("Name: ", { className: "font-bold text-gray-700" }),
+                  span(submittedData.name || 'N/A', { className: "text-gray-900" })
+                ], { className: "mb-2" }),
+                div([
+                  strong("Email: ", { className: "font-bold text-gray-700" }),
+                  span(submittedData.email || 'N/A', { className: "text-gray-900" })
+                ], { className: "mb-2" }),
+                div([
+                  strong("Message: ", { className: "font-bold text-gray-700" }),
+                  p(submittedData.message || 'N/A', { className: "text-gray-900 mt-1 whitespace-pre-wrap" })
+                ])
+              ], { className: "bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left" })
+            ]) : null,
+            
+            button("Send Another Message", { 
               className: "px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition",
-              onclick: () => setSuccess(false)
+              onclick: () => {
+                setSuccess(false);
+                setSubmittedData(null);
+              }
             })
           ], { className: "text-center py-12" }) :
           
@@ -387,36 +457,41 @@ const PageContent = (props) => {
             serverError ? ErrorDisplay({ error: serverError, className: "mb-6" }) : null,
             
             div([
-              FormInput({
-                label: "Full Name",
-                value: formData.name,
+              label("Full Name", { className: "block text-sm font-medium text-gray-700 mb-1" }),
+              input(null, {
+                type: "text",
+                value: (formData && typeof formData.name === 'string') ? formData.name : '',
+                className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`,
                 placeholder: "Jane Doe",
-                error: errors.name,
-                onChange: (val) => updateField('name', val)
-              })
+                required: true,
+                oninput: (e) => updateField('name', e?.target?.value || '')
+              }),
+              errors.name ? p(errors.name, { className: "mt-1 text-sm text-red-600" }) : null
             ], { className: "mb-4" }),
             
             div([
-              FormInput({
-                label: "Email Address",
+              label("Email Address", { className: "block text-sm font-medium text-gray-700 mb-1" }),
+              input(null, {
                 type: "email",
-                value: formData.email,
+                value: (formData && typeof formData.email === 'string') ? formData.email : '',
+                className: `w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'}`,
                 placeholder: "jane@example.com",
-                error: errors.email,
-                onChange: (val) => updateField('email', val)
-              })
+                required: true,
+                oninput: (e) => updateField('email', e?.target?.value || '')
+              }),
+              errors.email ? p(errors.email, { className: "mt-1 text-sm text-red-600" }) : null
             ], { className: "mb-4" }),
             
             div([
-              FormInput({
-                label: "Message",
-                type: "textarea",
-                value: formData.message,
+              label("Message", { className: "block text-sm font-medium text-gray-700 mb-1" }),
+              textarea(null, {
+                className: `w-full px-4 py-2 h-32 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${errors.message ? 'border-red-500 bg-red-50' : 'border-gray-300'}`,
                 placeholder: "How can we help you?",
-                error: errors.message,
-                onChange: (val) => updateField('message', val),
-                className: "h-32"
-              })
+                value: (formData && typeof formData.message === 'string') ? formData.message : '',
+                required: true,
+                oninput: (e) => updateField('message', e?.target?.value || '')
+              }),
+              errors.message ? p(errors.message, { className: "mt-1 text-sm text-red-600" }) : null
             ], { className: "mb-6" }),
             
             button(loading ? "Sending..." : "Send Message", {

@@ -93,7 +93,7 @@ npm install -g atom-framework@latest
 - [Deployment](./docs/DEPLOYMENT.md) - Deploy to production
 - [Production Guide](./docs/PRODUCTION.md) - Production optimization
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues
-- **[Production Readiness](./docs/PRODUCTION_READINESS.md)** - Is ATOM ready for production?
+- **Production Readiness** - Internal-only checklist (not published publicly)
 - **[Validation Guide](./docs/VALIDATION.md)** - Input validation and sanitization
 - **[DevTools Guide](./docs/DEVTOOLS.md)** - Enhanced HUD with performance, SEO, and error monitoring
 - [Examples](./examples/) - Code examples

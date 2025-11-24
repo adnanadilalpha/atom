@@ -7,38 +7,53 @@ atom build
 atom start
 ```
 
+## Deployment Workflow Overview
+
+ATOM ships with a deployment helper. Run it once per project per platform and commit the generated files:
+
+```bash
+# Generate configs/scripts for Vercel (default)
+atom deploy vercel
+
+# Other supported targets
+atom deploy cloudflare
+atom deploy docker
+```
+
+What this does:
+
+- Writes platform config (`vercel.json`, `wrangler.toml`, `Dockerfile`, etc.)
+- Adds the correct entry file, e.g. `api/atom-server.js` for Vercel
+- Injects npm scripts like `deploy:vercel` so CI/hosting can call `npm run build` automatically
+
+### Deploy via Git provider (no CLI auth required)
+
+1. Run `atom deploy <platform>` locally.
+2. Review/commit the generated files.
+3. Push to GitHub/GitLab and connect the repo to your hosting provider.
+4. The host reads those committed files and runs `npm install && npm run build` using its own credentials.
+
+### Deploy via CLI (optional)
+
+If you prefer to push directly from your machine, use the platform CLI after `atom deploy <platform>`.
+
 ## Deployment Options
 
 ### Vercel
 
-1. Install Vercel CLI:
+1. Generate config:
 ```bash
-npm i -g vercel
+atom deploy vercel
 ```
 
-2. Deploy:
+2. Deploy via CLI (optional if you already use Git):
 ```bash
-vercel
+npm run deploy:vercel   # runs atom build + vercel --prod
 ```
 
-3. Configure in `vercel.json`:
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
-}
-```
+3. Git-based deploy:
+   - Commit `vercel.json`, `api/atom-server.js`, and updated `package.json`.
+   - Push to your repo; Vercel picks up the config automatically.
 
 ### Railway
 
