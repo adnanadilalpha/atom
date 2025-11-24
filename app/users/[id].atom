@@ -1,5 +1,5 @@
 @Title "User Profile | ATOM";
-@Resource DB from '../../db'; // Go up two levels
+@Resource DB from '../db'; // Resolve to app/db.js
 
 @Flow Actions {
   get_user: async function(id) {

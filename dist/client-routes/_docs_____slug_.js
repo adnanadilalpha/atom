@@ -1,5 +1,5 @@
 
-// Route: /blog
+// Route: /docs/[...slug]
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -285,87 +285,59 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.secure_getPosts = async (data, options = {}) => { 
-                        const method = options.method || "POST";
-                        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-                        const res = await fetch("/_atom/rpc/_blog_secure_getPosts", { 
-                            method, 
-                            headers, 
-                            body: JSON.stringify(data),
-                            ...(options.signal ? { signal: options.signal } : {})
-                        }); 
-                    if (!res.ok) {
-                        const error = await res.json().catch(() => ({ error: res.statusText }));
-                        const errorMsg = error.error || res.statusText;
-                        const enhancedError = new Error(`Server Action "secure_getPosts" failed: ${errorMsg}`);
-                        if (error.function) enhancedError.function = error.function;
-                        if (error.hint) enhancedError.hint = error.hint;
-                        throw enhancedError;
-                    }
-                        const result = await res.json();
-                        return result; 
-                    };
 
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      Actions.secure_getPosts().then(data => {
-        setPosts(data);
-        setLoading(false);
-      });
-  }, []); // Empty deps array means run only once
-
+    const { params } = props || {};
+  // Ensure slug is always an array - handle both array and string cases
+  let slug = [];
+  if (params && params.slug) {
+    if (Array.isArray(params.slug)) {
+      slug = params.slug;
+    } else if (typeof params.slug === 'string') {
+      slug = params.slug ? [params.slug] : [];
+    }
+  }
+  const path = slug.join(' / ');
+  
   return div([
     div([
-      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
-      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
-    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
-
-    div([
-      loading ? LoadingSpinner() : 
+      span(path || "Docs", { className: "text-sm text-blue-600 font-bold uppercase tracking-wide mb-2 block" }),
+      h1(slug[slug.length - 1] || "Introduction", { className: "text-4xl font-black mb-6 capitalize" }),
       
-      div(posts.map(post => 
+      div([
+        p("This is a dynamically generated documentation page based on the URL path.", { className: "text-xl text-gray-600 mb-8" }),
+        
         div([
+          h3("Current Path Segments:", { className: "font-bold text-lg mb-2" }),
           div([
-            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
-            span("•", { className: "mx-2 text-gray-300" }),
-            span(post.date, { className: "text-xs text-gray-500" })
-          ], { className: "mb-2 flex items-center" }),
-          
-          h2([
-            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
-          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
-          
-          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
-          
-          div([
-            div([
-              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
-              span(post.author, { className: "text-sm font-medium text-gray-900" })
-            ], { className: "flex items-center" }),
-            
-            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
-          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
-          
-        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
-      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
-      
-    ], { className: "pb-24" })
-  ], { className: "bg-gray-50 min-h-screen" }); 
+            slug.length === 0 
+              ? div("Root (/docs)", { className: "font-mono text-sm bg-gray-100 p-2 rounded" })
+              : slug.map(s => div(s, { className: "font-mono text-sm bg-gray-100 p-2 rounded mb-1" }))
+          ], { className: "bg-gray-50 p-4 rounded-lg border border-gray-200" })
+        ], { className: "mb-12" }),
+        
+        div([
+          h2("Content Placeholder", { className: "text-2xl font-bold mb-4" }),
+          p("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", { className: "mb-4 text-gray-600 leading-relaxed" }),
+          p("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", { className: "mb-4 text-gray-600 leading-relaxed" })
+        ])
+      ], { className: "prose max-w-none" })
+    ])
+  ]); 
 };
 export default (props) => {
     // Ensure props is always an object
     props = props || {};
     // Layout functions are passed via props for SSR
     const Layout = props.Layout;
+    const Layout_docs = props.Layout_docs;
     
     const pageContent = PageContent(props);
     let result = pageContent;
     if (Layout && typeof Layout === 'function') { result = Layout({ ...props, content: result }); }
+    if (Layout_docs && typeof Layout_docs === 'function') { result = Layout_docs({ ...props, content: result }); }
     return result;
     
 };

@@ -1,5 +1,5 @@
 
-// Route: /blog
+// Route: /about
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -285,77 +285,60 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.secure_getPosts = async (data, options = {}) => { 
-                        const method = options.method || "POST";
-                        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-                        const res = await fetch("/_atom/rpc/_blog_secure_getPosts", { 
-                            method, 
-                            headers, 
-                            body: JSON.stringify(data),
-                            ...(options.signal ? { signal: options.signal } : {})
-                        }); 
-                    if (!res.ok) {
-                        const error = await res.json().catch(() => ({ error: res.statusText }));
-                        const errorMsg = error.error || res.statusText;
-                        const enhancedError = new Error(`Server Action "secure_getPosts" failed: ${errorMsg}`);
-                        if (error.function) enhancedError.function = error.function;
-                        if (error.hint) enhancedError.hint = error.hint;
-                        throw enhancedError;
-                    }
-                        const result = await res.json();
-                        return result; 
-                    };
 
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      Actions.secure_getPosts().then(data => {
-        setPosts(data);
-        setLoading(false);
-      });
-  }, []); // Empty deps array means run only once
+    const team = [
+    { name: "Alex Developer", role: "Lead Architect", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80", bio: "Obsessed with performance and compiler optimizations." },
+    { name: "Sarah Designer", role: "UI/UX Lead", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80", bio: "Making complex systems look simple and beautiful." },
+    { name: "Mike Engineer", role: "Backend Specialist", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80", bio: "Scaling servers to handle millions of requests." }
+  ];
 
   return div([
-    div([
-      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
-      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
-    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
+    // Hero
+    section([
+      div([
+        h1("About The Team", { className: "text-5xl font-black mb-6 tracking-tight" }),
+        p("We are a passionate group of developers building the next generation of web tools.", { className: "text-xl text-gray-600 max-w-2xl mx-auto" })
+      ], { className: "text-center py-20" })
+    ], { className: "bg-gray-50" }),
 
-    div([
-      loading ? LoadingSpinner() : 
-      
-      div(posts.map(post => 
+    // Team Grid
+    section([
+      div(team.map(member => 
         div([
+          Image({ 
+            src: member.image, 
+            alt: member.name, 
+            width: 400, 
+            height: 400, 
+            className: "w-full h-64 object-cover grayscale hover:grayscale-0 transition duration-500" 
+          }),
           div([
-            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
-            span("•", { className: "mx-2 text-gray-300" }),
-            span(post.date, { className: "text-xs text-gray-500" })
-          ], { className: "mb-2 flex items-center" }),
-          
-          h2([
-            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
-          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
-          
-          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
-          
+            h3(member.name, { className: "text-xl font-bold mb-1" }),
+            p(member.role, { className: "text-blue-600 font-medium text-sm uppercase tracking-wider mb-3" }),
+            p(member.bio, { className: "text-gray-600 text-sm leading-relaxed" })
+          ], { className: "p-6" })
+        ], { className: "bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 group" })
+      ), { className: "grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6 -mt-10" })
+    ], { className: "pb-24" }),
+
+    // Stats
+    section([
+      div([
+        div([
+          h2("Global Reach", { className: "text-3xl font-bold mb-8 text-center" }),
           div([
-            div([
-              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
-              span(post.author, { className: "text-sm font-medium text-gray-900" })
-            ], { className: "flex items-center" }),
-            
-            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
-          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
-          
-        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
-      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
-      
-    ], { className: "pb-24" })
-  ], { className: "bg-gray-50 min-h-screen" }); 
+            StatusCard({ label: "Downloads", value: "2M+" }),
+            StatusCard({ label: "Contributors", value: "150+" }),
+            StatusCard({ label: "Countries", value: "85" }),
+            StatusCard({ label: "Uptime", value: "99.9%" })
+          ], { className: "grid grid-cols-2 md:grid-cols-4 gap-6" })
+        ], { className: "max-w-6xl mx-auto px-6" })
+      ], { className: "py-24 bg-white" })
+    ])
+  ]); 
 };
 export default (props) => {
     // Ensure props is always an object

@@ -31,6 +31,28 @@ const IS_DEV = process.argv.some(arg => arg.includes('dev'));
 
 if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
 
+const ROUTE_DIST_DIR = path.join(DIST_DIR, 'routes');
+const CLIENT_ROUTE_DIR = path.join(DIST_DIR, '_atom', 'routes');
+const PUBLIC_ATOM_DIR = path.join(process.cwd(), 'public', '_atom');
+const PUBLIC_ROUTE_DIR = path.join(PUBLIC_ATOM_DIR, 'routes');
+const PUBLIC_CLIENT_BUNDLE = path.join(PUBLIC_ATOM_DIR, 'client.js');
+
+function resetRouteOutputDirs() {
+    [ROUTE_DIST_DIR, CLIENT_ROUTE_DIR, PUBLIC_ROUTE_DIR].forEach((dir) => {
+        if (fs.existsSync(dir)) {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+        fs.mkdirSync(dir, { recursive: true });
+    });
+}
+
+let routeDirsInitialized = false;
+function ensurePublicAtomDir() {
+    if (!fs.existsSync(PUBLIC_ATOM_DIR)) {
+        fs.mkdirSync(PUBLIC_ATOM_DIR, { recursive: true });
+    }
+}
+
 let serverOutput = `// SERVER API LOGIC\n`;
 let apiRouteOutput = `\nconst APIRoutes = [];\n`;
 let clientRoutes = `\nconst Routes = [];\n`;
@@ -1441,18 +1463,7 @@ allFiles.forEach(filePath => {
             ` : hasLayout ? `return Layout({ ...props, content: PageContent(props) });` : 'return PageContent(props);'}
         }`;
     
-    const lazyComponent = IS_DEV ? clientComponent
-        : `async (props) => {
-            const module = await import('./routes/${routeId}.js');
-            // Pass Layout functions as props for SSR
-            const layoutProps = { ...props };
-            ${applicableLayouts.length > 0 ? applicableLayouts.map((layoutPath) => {
-                const layoutName = layoutPath === '/' ? 'Layout' : 
-                    'Layout_' + layoutPath.replace(/\//g, '_').replace(/^_/, '').replace(/[^a-zA-Z0-9]/g, '_');
-                return `layoutProps.${layoutName} = ${layoutName};`;
-            }).join('\n            ') : hasLayout ? 'layoutProps.Layout = Layout;' : ''}
-            return module.default(layoutProps);
-        }`;
+    const lazyComponent = clientComponent;
     
     const clientRouteDefinition = `
     {
@@ -1649,9 +1660,15 @@ export default (props) => {
     ` : hasLayout ? `const pageContent = PageContent(props); return Layout && typeof Layout === 'function' ? Layout({ ...props, content: pageContent }) : pageContent;` : 'return PageContent(props);'}
 };
 `;
-        const routeDistDir = path.join(DIST_DIR, 'routes');
-        if (!fs.existsSync(routeDistDir)) fs.mkdirSync(routeDistDir, { recursive: true });
-        fs.writeFileSync(path.join(routeDistDir, `${routeId}.js`), routeFileContent);
+        if (!routeDirsInitialized) {
+            resetRouteOutputDirs();
+            ensurePublicAtomDir();
+            routeDirsInitialized = true;
+        }
+        const routeFileName = `${routeId}.js`;
+        fs.writeFileSync(path.join(ROUTE_DIST_DIR, routeFileName), routeFileContent);
+        fs.writeFileSync(path.join(CLIENT_ROUTE_DIR, routeFileName), routeFileContent);
+        fs.writeFileSync(path.join(PUBLIC_ROUTE_DIR, routeFileName), routeFileContent);
     }
 
     clientRoutes += `Routes.push(${clientRouteDefinition});\n`;
@@ -1760,6 +1777,12 @@ compileCSS().then((finalCSS) => {
         if (!fs.existsSync(clientTempPath)) {
             console.error("❌ Client temp file not found:", clientTempPath);
         } else {
+            const clientExternalPatterns = [
+                './routes/*',
+                'routes/*',
+                '../routes/*'
+            ];
+
             const clientBuildResult = esbuild.buildSync({
                 entryPoints: [clientTempPath],
                 bundle: true,
@@ -1768,10 +1791,7 @@ compileCSS().then((finalCSS) => {
                 format: 'iife',
                 globalName: 'AtomApp',
                 metafile: true,
-                external: (path) => {
-                    // Exclude route files - they're loaded dynamically at runtime
-                    return path.startsWith('./routes/');
-                },
+                external: clientExternalPatterns,
             });
             
             // Calculate bundle size for DevTools
@@ -1783,6 +1803,13 @@ compileCSS().then((finalCSS) => {
             }
             
             if (fs.existsSync(clientTempPath)) fs.unlinkSync(clientTempPath);
+
+            try {
+                ensurePublicAtomDir();
+                fs.copyFileSync(path.join(DIST_DIR, 'client.js'), PUBLIC_CLIENT_BUNDLE);
+            } catch (copyErr) {
+                console.warn('⚠️  Failed to copy client bundle to public:', copyErr.message);
+            }
         }
     } catch (e) {
         console.error("❌ Bundling Failed:", e.message);
@@ -1794,6 +1821,13 @@ compileCSS().then((finalCSS) => {
         if (!fs.existsSync(ssrTempPath)) {
             console.error("❌ SSR temp file not found:", ssrTempPath);
         } else {
+            const ssrExternalPatterns = [
+                './routes/*',
+                'routes/*',
+                'dist/routes/*',
+                '../routes/*'
+            ];
+
             esbuild.buildSync({
                 entryPoints: [ssrTempPath],
                 bundle: true,
@@ -1801,10 +1835,7 @@ compileCSS().then((finalCSS) => {
                 minify: !IS_DEV,
                 outfile: path.join(DIST_DIR, 'ssr.js'),
                 format: 'cjs',
-                external: (path) => {
-                    // Exclude route files - they're loaded dynamically at runtime
-                    return path.startsWith('./routes/') || path.startsWith('dist/routes/');
-                },
+                external: ssrExternalPatterns,
             });
             if (fs.existsSync(ssrTempPath)) fs.unlinkSync(ssrTempPath);
         }

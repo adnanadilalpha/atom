@@ -1,5 +1,5 @@
 
-// Route: /blog
+// Route: /products
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -285,10 +285,10 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.secure_getPosts = async (data, options = {}) => { 
+Actions.secure_getProducts = async (data, options = {}) => { 
                         const method = options.method || "POST";
                         const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-                        const res = await fetch("/_atom/rpc/_blog_secure_getPosts", { 
+                        const res = await fetch("/_atom/rpc/_products_secure_getProducts", { 
                             method, 
                             headers, 
                             body: JSON.stringify(data),
@@ -297,7 +297,7 @@ Actions.secure_getPosts = async (data, options = {}) => {
                     if (!res.ok) {
                         const error = await res.json().catch(() => ({ error: res.statusText }));
                         const errorMsg = error.error || res.statusText;
-                        const enhancedError = new Error(`Server Action "secure_getPosts" failed: ${errorMsg}`);
+                        const enhancedError = new Error(`Server Action "secure_getProducts" failed: ${errorMsg}`);
                         if (error.function) enhancedError.function = error.function;
                         if (error.hint) enhancedError.hint = error.hint;
                         throw enhancedError;
@@ -309,52 +309,111 @@ Actions.secure_getPosts = async (data, options = {}) => {
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [posts, setPosts] = useState([]);
+    const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
 
+  // Use useRef to track loading state and debounce timer
+  const loadingRef = useRef(false);
+  const searchDebounceRef = useRef(null);
+
+  // Initial load - only once on mount
     useEffect(() => {
-      Actions.secure_getPosts().then(data => {
-        setPosts(data);
-        setLoading(false);
-      });
+      loadProducts();
   }, []); // Empty deps array means run only once
 
-  return div([
-    div([
-      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
-      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
-    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
+  const loadProducts = async (query = "") => {
+    // Prevent duplicate simultaneous requests
+    if (loadingRef.current) return;
+    
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await Actions.secure_getProducts(query);
+      // Defensive: Ensure data is always an array
+      if (!Array.isArray(data)) {
+        console.warn('loadProducts: Expected array but got:', typeof data, data);
+        setProducts([]);
+      } else {
+      setProducts(data);
+      }
+    } catch (err) {
+      console.error('loadProducts error:', err);
+      setError(err);
+      setProducts([]); // Reset to empty array on error
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  };
 
+  const handleSearch = (val) => {
+    setSearch(val);
+    
+    // Clear previous debounce timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    
+    // Debounce search requests (wait 300ms after user stops typing)
+    searchDebounceRef.current = setTimeout(() => {
+    loadProducts(val);
+    }, 300);
+  };
+  
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
+  return div([
+    // Header
     div([
+      h1("Our Products", { className: "text-4xl font-bold mb-4" }),
+      p("Tools designed for the modern web.", { className: "text-xl text-gray-600 mb-8" }),
+      
+      // Search
+      div([
+        FormInput({
+          placeholder: "Search products...",
+          value: search,
+          onChange: handleSearch,
+          className: "max-w-md"
+        })
+      ], { className: "mb-12" })
+    ], { className: "max-w-7xl mx-auto px-6 pt-12" }),
+
+    // Grid
+    div([
+      error ? ErrorDisplay({ error }) : null,
+      
       loading ? LoadingSpinner() : 
       
-      div(posts.map(post => 
-        div([
-          div([
-            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
-            span("•", { className: "mx-2 text-gray-300" }),
-            span(post.date, { className: "text-xs text-gray-500" })
-          ], { className: "mb-2 flex items-center" }),
-          
-          h2([
-            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
-          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
-          
-          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
-          
-          div([
-            div([
-              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
-              span(post.author, { className: "text-sm font-medium text-gray-900" })
-            ], { className: "flex items-center" }),
-            
-            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
-          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
-          
-        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
-      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
-      
-    ], { className: "pb-24" })
+      (!Array.isArray(products) || products.length === 0) ? 
+        div("No products found matching your search.", { className: "text-center text-gray-500 py-12" }) :
+        
+        div((Array.isArray(products) ? products : []).map((product, index) => {
+          // Defensive: Ensure product is an object
+          if (!product || typeof product !== 'object') {
+            console.warn('Invalid product at index', index, product);
+            return null;
+          }
+          return ProductCard({
+            title: product.title || 'Untitled',
+            description: product.description || '',
+            price: product.price || '$0.00',
+            image: product.image || '',
+            onAddToCart: () => alert(`Added ${product.title || 'product'} to cart!`)
+          });
+        }).filter(Boolean), { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" })
+        
+    ], { className: "max-w-7xl mx-auto px-6 pb-24 min-h-[400px]" })
   ], { className: "bg-gray-50 min-h-screen" }); 
 };
 export default (props) => {

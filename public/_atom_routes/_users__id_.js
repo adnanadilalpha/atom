@@ -1,5 +1,5 @@
 
-// Route: /blog
+// Route: /users/[id]
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -285,77 +285,53 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.secure_getPosts = async (data, options = {}) => { 
-                        const method = options.method || "POST";
-                        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-                        const res = await fetch("/_atom/rpc/_blog_secure_getPosts", { 
-                            method, 
-                            headers, 
-                            body: JSON.stringify(data),
-                            ...(options.signal ? { signal: options.signal } : {})
-                        }); 
-                    if (!res.ok) {
-                        const error = await res.json().catch(() => ({ error: res.statusText }));
-                        const errorMsg = error.error || res.statusText;
-                        const enhancedError = new Error(`Server Action "secure_getPosts" failed: ${errorMsg}`);
-                        if (error.function) enhancedError.function = error.function;
-                        if (error.hint) enhancedError.hint = error.hint;
-                        throw enhancedError;
-                    }
-                        const result = await res.json();
-                        return result; 
-                    };
+Actions.get_user = async function (id) {
+  console.log("Fetching User ID:", id);
+  // Mock DB lookup
+  return {
+    id: id,
+    name: "User " + id,
+    role: id === '1' ? 'Admin' : 'Guest',
+    bio: "This data came from the server securely."
+  };
+};
 
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+    // PROPS now contains 'params' from the URL!
+  const { params } = props;
+  const [user, setUser] = useState(null);
 
-    useEffect(() => {
-      Actions.secure_getPosts().then(data => {
-        setPosts(data);
-        setLoading(false);
-      });
-  }, []); // Empty deps array means run only once
+  if (!user) {
+      // Auto-fetch on load
+      Actions.get_user(params.id).then(data => setUser(data));
+      return div("Loading Profile...", { className: "p-10 text-center text-gray-500" });
+  }
 
   return div([
     div([
-      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
-      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
-    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
-
-    div([
-      loading ? LoadingSpinner() : 
-      
-      div(posts.map(post => 
+      div([
+        h1("Welcome", { className: "text-4xl font-bold mb-10" }),
+    
+        // No import needed! It's auto-imported.
+        Card({ title: "Auto Import" }, "This component was loaded automatically from the _components folder.")
+    
+      ], { className: "p-20 bg-gray-50 min-h-screen" }),
+        // Avatar Circle
+        div(user.name[0], { className: "w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 mx-auto" }),
+        
+        h1(user.name, { className: "text-3xl font-bold text-center text-gray-800" }),
+        div(user.role, { className: "text-center text-sm uppercase tracking-wide text-blue-500 font-bold mb-4" }),
+        
+        div(user.bio, { className: "bg-gray-50 p-4 rounded-lg text-gray-600 text-center" }),
+        
         div([
-          div([
-            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
-            span("•", { className: "mx-2 text-gray-300" }),
-            span(post.date, { className: "text-xs text-gray-500" })
-          ], { className: "mb-2 flex items-center" }),
-          
-          h2([
-            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
-          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
-          
-          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
-          
-          div([
-            div([
-              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
-              span(post.author, { className: "text-sm font-medium text-gray-900" })
-            ], { className: "flex items-center" }),
-            
-            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
-          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
-          
-        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
-      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
-      
-    ], { className: "pb-24" })
-  ], { className: "bg-gray-50 min-h-screen" }); 
+            a("← Back Home", { href: "/", className: "text-blue-600 hover:underline" })
+        ], { className: "mt-6 text-center" })
+        
+    ], { className: "max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg mt-10" })
+  ]); 
 };
 export default (props) => {
     // Ensure props is always an object

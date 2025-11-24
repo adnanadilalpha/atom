@@ -1,5 +1,5 @@
 
-// Route: /blog
+// Route: /contact
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -285,10 +285,10 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.secure_getPosts = async (data, options = {}) => { 
+Actions.secure_submitContact = async (data, options = {}) => { 
                         const method = options.method || "POST";
                         const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-                        const res = await fetch("/_atom/rpc/_blog_secure_getPosts", { 
+                        const res = await fetch("/_atom/rpc/_contact_secure_submitContact", { 
                             method, 
                             headers, 
                             body: JSON.stringify(data),
@@ -297,7 +297,7 @@ Actions.secure_getPosts = async (data, options = {}) => {
                     if (!res.ok) {
                         const error = await res.json().catch(() => ({ error: res.statusText }));
                         const errorMsg = error.error || res.statusText;
-                        const enhancedError = new Error(`Server Action "secure_getPosts" failed: ${errorMsg}`);
+                        const enhancedError = new Error(`Server Action "secure_submitContact" failed: ${errorMsg}`);
                         if (error.function) enhancedError.function = error.function;
                         if (error.hint) enhancedError.hint = error.hint;
                         throw enhancedError;
@@ -309,53 +309,126 @@ Actions.secure_getPosts = async (data, options = {}) => {
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+    const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [serverError, setServerError] = useState(null);
 
-    useEffect(() => {
-      Actions.secure_getPosts().then(data => {
-        setPosts(data);
-        setLoading(false);
-      });
-  }, []); // Empty deps array means run only once
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = "Name is required";
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Invalid email format";
+    if (!formData.message.trim()) newErrors.message = "Message is required";
+    else if (formData.message.length < 10) newErrors.message = "Message too short";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setLoading(true);
+    setServerError(null);
+    
+    try {
+      const result = await Actions.secure_submitContact(formData);
+      setSuccess(true);
+      setFormData({ name: '', email: '', message: '' });
+    } catch (err) {
+      setServerError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateField = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) setErrors({ ...errors, [field]: null });
+  };
 
   return div([
     div([
-      h1("Latest News", { className: "text-4xl font-bold mb-4" }),
-      p("Insights, updates, and tutorials from the team.", { className: "text-xl text-gray-600" })
-    ], { className: "bg-white border-b border-gray-100 py-16 px-6 text-center mb-12" }),
-
-    div([
-      loading ? LoadingSpinner() : 
-      
-      div(posts.map(post => 
+      div([
+        h1("Contact Us", { className: "text-4xl font-bold mb-4" }),
+        p("We'd love to hear from you. Send us a message and we'll respond within 24 hours.", { className: "text-xl text-gray-600 mb-8" }),
+        
         div([
           div([
-            span(post.category, { className: "text-xs font-bold text-blue-600 uppercase tracking-wide" }),
-            span("•", { className: "mx-2 text-gray-300" }),
-            span(post.date, { className: "text-xs text-gray-500" })
-          ], { className: "mb-2 flex items-center" }),
-          
-          h2([
-            a(post.title, { href: `/blog/${post.id}`, className: "hover:text-blue-600 transition" })
-          ], { className: "text-2xl font-bold mb-3 text-gray-900" }),
-          
-          p(post.excerpt, { className: "text-gray-600 mb-4 leading-relaxed" }),
+            h3("Email", { className: "font-bold text-lg mb-1" }),
+            p("support@atom-framework.com", { className: "text-blue-600" })
+          ], { className: "mb-6" }),
           
           div([
-            div([
-              div(post.author[0], { className: "w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 mr-2" }),
-              span(post.author, { className: "text-sm font-medium text-gray-900" })
-            ], { className: "flex items-center" }),
-            
-            a("Read Article →", { href: `/blog/${post.id}`, className: "text-sm font-bold text-blue-600 hover:text-blue-800" })
-          ], { className: "flex justify-between items-center pt-4 border-t border-gray-50" })
+            h3("Office", { className: "font-bold text-lg mb-1" }),
+            p("123 Innovation Drive", { className: "text-gray-600" }),
+            p("San Francisco, CA 94103", { className: "text-gray-600" })
+          ])
+        ], { className: "bg-gray-50 p-8 rounded-xl" })
+        
+      ], { className: "col-span-1 md:col-span-1" }),
+
+      div([
+        div([
+          success ? div([
+            div("✅", { className: "text-4xl mb-4" }),
+            h3("Message Sent!", { className: "text-2xl font-bold mb-2" }),
+            p("Thank you for reaching out. We'll be in touch shortly.", { className: "text-gray-600 mb-6" }),
+            button("Send Another", { 
+              className: "px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition",
+              onclick: () => setSuccess(false)
+            })
+          ], { className: "text-center py-12" }) :
           
-        ], { className: "bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100" })
-      ), { className: "grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto px-6" })
-      
-    ], { className: "pb-24" })
-  ], { className: "bg-gray-50 min-h-screen" }); 
+          form([
+            serverError ? ErrorDisplay({ error: serverError, className: "mb-6" }) : null,
+            
+            div([
+              FormInput({
+                label: "Full Name",
+                value: formData.name,
+                placeholder: "Jane Doe",
+                error: errors.name,
+                onChange: (val) => updateField('name', val)
+              })
+            ], { className: "mb-4" }),
+            
+            div([
+              FormInput({
+                label: "Email Address",
+                type: "email",
+                value: formData.email,
+                placeholder: "jane@example.com",
+                error: errors.email,
+                onChange: (val) => updateField('email', val)
+              })
+            ], { className: "mb-4" }),
+            
+            div([
+              FormInput({
+                label: "Message",
+                type: "textarea",
+                value: formData.message,
+                placeholder: "How can we help you?",
+                error: errors.message,
+                onChange: (val) => updateField('message', val),
+                className: "h-32"
+              })
+            ], { className: "mb-6" }),
+            
+            button(loading ? "Sending..." : "Send Message", {
+              type: "submit",
+              className: `w-full py-3 px-6 rounded-lg font-bold text-white transition ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'}`,
+              disabled: loading
+            })
+          ], { onsubmit: handleSubmit })
+        ], { className: "bg-white p-8 rounded-xl shadow-lg border border-gray-100" })
+      ], { className: "col-span-1 md:col-span-2" })
+    ], { className: "grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto px-6 py-16" })
+  ]); 
 };
 export default (props) => {
     // Ensure props is always an object

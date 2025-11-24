@@ -50,7 +50,11 @@
     "dev": "node system/cli.js dev",
     "build": "node system/cli.js build",
     "start": "node system/cli.js start",
-    "compile-engine": "node build_engine.js"
+    "compile-engine": "node build_engine.js",
+    "deploy": "npm run build && npm run start",
+    "deploy:vercel": "npm run build && vercel --prod",
+    "deploy:cloudflare": "npm run build && wrangler publish",
+    "deploy:docker": "docker build -t atom-app . && docker run -p 3000:3000 atom-app"
   },
   "dependencies": {
     "@babel/generator": "^7.23.0",

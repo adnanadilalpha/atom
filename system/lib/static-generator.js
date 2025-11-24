@@ -53,13 +53,15 @@ async function generateStaticPages() {
         
         console.log(`   → Found ${staticRoutes.length} static page(s) to generate`);
         
+        const bundleTag = '<script defer src="/_atom/client.js"></script>';
+        
         // Generate each static page
         for (const route of staticRoutes) {
             try {
                 const result = await SSREngine.renderToString(route);
                 if (result && result.html) {
                     const metaTags = (result.meta || []).map(m => `<meta name="${m.name}" content="${m.content}">`).join('\n');
-                    const fullHTML = `<!DOCTYPE html><html><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">${result.html}</div><script src="/bundle.js"></script></body></html>`;
+                    const fullHTML = `<!DOCTYPE html><html><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">${result.html}</div>${bundleTag}</body></html>`;
                     
                     // Create directory structure
                     let filePath = route === '/' ? '/index.html' : `${route}/index.html`;

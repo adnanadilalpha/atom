@@ -16,6 +16,9 @@ try {
 
 const DIST_DIR = path.join(process.cwd(), 'dist');
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
+const ROUTES_DIR = path.join(DIST_DIR, 'routes');
+const CLIENT_ROUTES_DIR = path.join(DIST_DIR, '_atom', 'routes');
+const USE_STATIC_BUNDLE = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 const SERVER_INSTANCE_ID = Date.now().toString();
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
@@ -44,6 +47,15 @@ app.use(bodyParser.json({ strict: false }));
 // --- 1. STATIC ASSETS ---
 if (fs.existsSync(PUBLIC_DIR)) {
     app.use(express.static(PUBLIC_DIR));
+}
+
+// Serve generated route chunks so client-side router can fetch them
+if (fs.existsSync(CLIENT_ROUTES_DIR)) {
+    app.use('/_atom/routes', express.static(CLIENT_ROUTES_DIR, {
+        setHeaders: (res) => {
+            res.setHeader('Cache-Control', IS_DEV ? 'no-cache' : 'public, max-age=31536000, immutable');
+        }
+    }));
 }
 
 // Serve bundle info for DevTools
@@ -392,7 +404,8 @@ app.get(/(.*)/, async (req, res) => {
             title = result.title;
             revalidate = result.revalidate;
             isStatic = result.isStatic;
-            const enableStreaming = result.enableStreaming;
+            const streamingAllowed = process.env.ATOM_ENABLE_STREAMING === 'true';
+            const enableStreaming = streamingAllowed && result.enableStreaming;
             
             if (result.meta) {
                 metaTags = result.meta.map(m => `<meta name="${m.name}" content="${m.content}">`).join('\n');
@@ -428,7 +441,10 @@ app.get(/(.*)/, async (req, res) => {
             }
             
             // Standard SSR (non-streaming)
-            const fullHTML = `<!DOCTYPE html><html><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">${initialHTML}</div><script src="/bundle.js"></script></body></html>`;
+            const bundleTag = USE_STATIC_BUNDLE
+                ? '<script defer src="/_atom/client.js"></script>'
+                : '<script src="/bundle.js"></script>';
+            const fullHTML = `<!DOCTYPE html><html><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/favicon.ico"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
             
             // Cache static pages indefinitely
             if (isStatic) {
@@ -459,7 +475,10 @@ app.get(/(.*)/, async (req, res) => {
             
             res.send(fullHTML);
         } else {
-            res.send(`<!DOCTYPE html><html><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>`);
+            const bundleTag = USE_STATIC_BUNDLE
+                ? '<script defer src="/_atom/client.js"></script>'
+                : '<script src="/bundle.js"></script>';
+            res.send(`<!DOCTYPE html><html><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div>${bundleTag}</body></html>`);
         }
     } catch (e) { 
         res.status(500).send(`<h1>Error</h1><pre>${e.stack}</pre>`); 
@@ -600,4 +619,10 @@ async function startServer() {
     });
 }
 
-startServer();
+if (require.main === module) {
+    startServer();
+}
+
+module.exports = app;
+module.exports.startServer = startServer;
+module.exports.server = server;
