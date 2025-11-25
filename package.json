@@ -1,6 +1,6 @@
 {
   "name": "atom-framework",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "A revolutionary, compiler-driven, full-stack framework for maximum performance and developer simplicity.",
   "main": "system/cli.js",
   "bin": {

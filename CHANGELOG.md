@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.5.3] - 2025-02-XX - Deployment Compatibility Hotfix
+
+### Fixed
+- **Vercel deployment runner resolution** now falls back to `node_modules/atom-framework/system/runner.js` when a local `system/` folder is absent (the default for `npx atom create` apps), ensuring freshly scaffolded projects deploy without manual tweaks.
+
 ## [1.5.2] - 2025-02-XX - Stability & SEO Accuracy Release
 
 ### Added
