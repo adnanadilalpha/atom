@@ -49,6 +49,31 @@ if (fs.existsSync(PUBLIC_DIR)) {
     app.use(express.static(PUBLIC_DIR));
 }
 
+// Explicitly serve CSS file for Vercel compatibility
+app.get('/_atom/styles.css', (req, res) => {
+    const cssPath = path.join(PUBLIC_DIR, '_atom', 'styles.css');
+    const distCssPath = path.join(DIST_DIR, '_atom', 'styles.css');
+    
+    // Try public first, then dist
+    if (fs.existsSync(cssPath)) {
+        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.sendFile(cssPath);
+    } else if (fs.existsSync(distCssPath)) {
+        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.sendFile(distCssPath);
+    } else {
+        // Fallback: return empty CSS to prevent 404 errors breaking the page
+        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'no-cache');
+        if (IS_DEV) {
+            console.warn('⚠️  CSS file not found at:', cssPath, 'or', distCssPath);
+        }
+        res.send('/* CSS file not found - styles may be missing */');
+    }
+});
+
 // Serve generated route chunks so client-side router can fetch them
 if (fs.existsSync(CLIENT_ROUTES_DIR)) {
     app.use('/_atom/routes', express.static(CLIENT_ROUTES_DIR, {
@@ -164,6 +189,7 @@ app.get('/_atom/image', async (req, res) => {
         if (!fs.existsSync(imagePath)) return res.status(404).send("Not found");
         if (!sharp) {
             // Fallback: serve original if sharp unavailable
+            if (IS_DEV) console.log(`⚠️  Sharp not available, serving original for: ${url}`);
             return res.sendFile(imagePath);
         }
 
@@ -380,6 +406,47 @@ function cleanupCache(cache, maxSize) {
 
 app.get(/(.*)/, async (req, res) => {
     const url = req.params[0] || '/';
+    
+    // Fallback: Serve static files if Vercel didn't serve them
+    // This handles cases where static files aren't found in public/ during deployment
+    if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|xml|txt|pdf|zip)$/)) {
+        const staticPath = path.join(PUBLIC_DIR, url);
+        const distStaticPath = path.join(DIST_DIR, url);
+        
+        // Set appropriate Content-Type
+        const ext = path.extname(url).toLowerCase();
+        const contentTypes = {
+            '.js': 'application/javascript',
+            '.css': 'text/css',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.ico': 'image/x-icon',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+            '.ttf': 'font/ttf',
+            '.eot': 'application/vnd.ms-fontobject',
+            '.json': 'application/json',
+            '.xml': 'application/xml',
+            '.txt': 'text/plain',
+            '.pdf': 'application/pdf',
+            '.zip': 'application/zip'
+        };
+        
+        if (fs.existsSync(staticPath)) {
+            res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            return res.sendFile(staticPath);
+        } else if (fs.existsSync(distStaticPath)) {
+            res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            return res.sendFile(distStaticPath);
+        }
+        // If file doesn't exist, continue to normal routing (will return 404)
+    }
+    
     try {
         let initialHTML = "";
         let title = "Atom App";
@@ -459,7 +526,12 @@ app.get(/(.*)/, async (req, res) => {
             const bundleTag = USE_STATIC_BUNDLE
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
-            const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
+            // Include CSS link tag for better SSR and performance
+            const cssLinkTag = fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css'))
+                ? '<link rel="stylesheet" href="/_atom/styles.css" data-atom-css>'
+                : '';
+
+            const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml">${cssLinkTag}</head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
             
             // Cache static pages indefinitely
             if (isStatic) {
@@ -493,7 +565,12 @@ app.get(/(.*)/, async (req, res) => {
             const bundleTag = USE_STATIC_BUNDLE
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
-            res.send(`<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div>${bundleTag}</body></html>`);
+            // Include CSS link tag for fallback HTML as well
+            const cssLinkTag = fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css'))
+                ? '<link rel="stylesheet" href="/_atom/styles.css" data-atom-css>'
+                : '';
+
+            res.send(`<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml">${cssLinkTag}</head><body><div id="root"></div>${bundleTag}</body></html>`);
         }
     } catch (e) { 
         res.status(500).send(`<h1>Error</h1><pre>${e.stack}</pre>`); 

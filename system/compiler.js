@@ -347,6 +347,12 @@ const devToolsCode = `
     analyze() {
       const issues = [], warnings = [];
       if(typeof document === 'undefined') return {issues, warnings, score: 100};
+
+      // Wait for document to be ready and meta tags to be set
+      if(document.readyState !== 'complete' && document.readyState !== 'interactive') {
+        return {issues: [{severity:'info',message:'Analyzing...',suggestion:'Loading page content'}], warnings: [], score: 100};
+      }
+
       const title = document.querySelector('title');
       if(!title || !title.textContent || title.textContent.trim().length === 0) {
         issues.push({severity:'error',message:'Missing title',suggestion:'Add @Title directive'});
@@ -355,22 +361,34 @@ const devToolsCode = `
       } else if(title.textContent.trim().length > 60) {
         warnings.push({severity:'warning',message:'Title too long',suggestion:'Keep under 60 characters'});
       }
+
       const metaDesc = document.querySelector('meta[name="description"]');
       if(!metaDesc || !metaDesc.content || metaDesc.content.trim().length === 0) {
         issues.push({severity:'error',message:'Missing description',suggestion:'Add @Description directive'});
-      } else if(metaDesc.content.trim().length < 120) {
+      } else {
+        const descLength = metaDesc.content.trim().length;
+        if(descLength < 120) {
         warnings.push({severity:'warning',message:'Description too short',suggestion:'Aim for 150-160 characters'});
+        } else if(descLength > 160) {
+          warnings.push({severity:'warning',message:'Description too long',suggestion:'Keep under 160 characters'});
       }
+      }
+
       const h1 = document.querySelector('h1');
       if(!h1) issues.push({severity:'error',message:'Missing h1',suggestion:'Add h1 tag for SEO'});
+
       const h1Count = document.querySelectorAll('h1').length;
       if(h1Count > 1) warnings.push({severity:'warning',message:\`Multiple h1 tags (\${h1Count})\`,suggestion:'Use only one h1 per page'});
+
       const images = document.querySelectorAll('img');
       let imagesWithoutAlt = 0;
       images.forEach(img => { if(!img.alt || img.alt.trim().length === 0) imagesWithoutAlt++; });
       if(imagesWithoutAlt > 0) warnings.push({severity:'warning',message:\`\${imagesWithoutAlt} image(s) without alt\`,suggestion:'Add alt attributes'});
+
       if(!document.documentElement.lang) warnings.push({severity:'warning',message:'Missing lang attribute',suggestion:'Add lang="en" to html tag'});
+
       if(!document.querySelector('meta[name="viewport"]')) issues.push({severity:'error',message:'Missing viewport',suggestion:'Add viewport meta tag'});
+
       const score = Math.max(0, 100 - issues.length * 15 - warnings.filter(w => w.severity === 'warning').length * 5);
       return {issues, warnings, score: Math.min(100, score)};
     }
@@ -556,6 +574,49 @@ const devToolsCode = `
   perfMonitor.init();
   
   const seoAnalyzer = new SEOAnalyzer();
+
+  // Re-analyze SEO after page is fully loaded and meta tags are set
+  if(typeof window !== 'undefined') {
+    let seoRetryCount = 0;
+    const maxRetries = 5;
+
+    const reanalyzeSEO = () => {
+      try {
+        seoResults = seoAnalyzer.analyze();
+
+        // If we still have "Analyzing..." status and haven't exceeded retries, try again
+        if(seoResults.issues && seoResults.issues.length > 0 &&
+           seoResults.issues[0].message === 'Analyzing...' &&
+           seoRetryCount < maxRetries) {
+          seoRetryCount++;
+          setTimeout(reanalyzeSEO, 200);
+          return;
+        }
+
+        // Reset retry count on successful analysis
+        seoRetryCount = 0;
+        updateHUD();
+      } catch(e) {
+        console.error('HUD SEO analysis error:', e);
+        seoResults = { issues: [{severity:'error',message:'Analysis error',suggestion:'Check browser console'}], warnings: [], score: 0 };
+        updateHUD();
+      }
+    };
+
+    // Listen for DOM ready and navigation events to re-analyze SEO
+    if(document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(reanalyzeSEO, 50);
+      });
+    } else {
+      setTimeout(reanalyzeSEO, 50);
+    }
+
+    // Also re-analyze when navigation occurs (meta tags are updated)
+    window.addEventListener('popstate', () => {
+      setTimeout(reanalyzeSEO, 50);
+    });
+  }
   
   // Update metrics periodically
   let metrics = { 
@@ -748,7 +809,13 @@ const devToolsCode = `
     };
   });
   
+  let hudUpdateInProgress = false;
+  
   function updateHUD() {
+    // Prevent recursive updates
+    if (hudUpdateInProgress) return;
+    hudUpdateInProgress = true;
+
     try {
       // Ensure metrics structure is valid
       if (!metrics) {
@@ -849,9 +916,9 @@ const devToolsCode = `
       }
     
     // Update SEO tab - always set content
-    const seoScore = (seoResults && seoResults.score) || 100;
-    const seoIssues = (seoResults && seoResults.issues) || [];
-    const seoWarnings = (seoResults && seoResults.warnings) || [];
+    const seoScore = (seoResults && typeof seoResults.score === 'number') ? seoResults.score : 100;
+    const seoIssues = (seoResults && Array.isArray(seoResults.issues)) ? seoResults.issues : [];
+    const seoWarnings = (seoResults && Array.isArray(seoResults.warnings)) ? seoResults.warnings : [];
     
     // Get tab reference from shadow DOM or document
     const seoTabEl = s.querySelector('#tab-seo') || document.getElementById('tab-seo') || seoTab;
@@ -936,6 +1003,8 @@ const devToolsCode = `
       if (perfTabEl) perfTabEl.innerHTML = '<div style="color: #ef4444; padding: 16px;">Error loading performance data</div>';
       if (seoTabEl) seoTabEl.innerHTML = '<div style="color: #ef4444; padding: 16px;">Error loading SEO data</div>';
       if (errorsTabEl) errorsTabEl.innerHTML = '<div style="color: #ef4444; padding: 16px;">Error loading error data</div>';
+    } finally {
+      hudUpdateInProgress = false;
     }
   }
   
@@ -1743,14 +1812,25 @@ async function compileCSS() {
 }
 
 compileCSS().then((finalCSS) => {
+    // Write CSS to static file for better SSR support
+    const cssFilePath = path.join(PUBLIC_ATOM_DIR, 'styles.css');
+    ensurePublicAtomDir();
+    fs.writeFileSync(cssFilePath, finalCSS || '');
+    console.log(`   -> 🎨 CSS written to ${cssFilePath}`);
+
     const devTools = IS_DEV ? devToolsCode : '';
     const hotReload = IS_DEV ? hotReloadCode : '';
     const cssInject = `
         const cssContent = ${JSON.stringify(finalCSS || '')};
         if (typeof document !== 'undefined' && cssContent) {
+            // Check if CSS is already loaded via link tag to avoid duplicate styles
+            const existingLink = document.querySelector('link[data-atom-css]');
+            if (!existingLink) {
             const styleTag = document.createElement('style');
+                styleTag.setAttribute('data-atom-css', '');
             styleTag.innerHTML = cssContent;
             document.head.appendChild(styleTag);
+            }
             ${devTools}
             ${hotReload}
         }
@@ -1867,6 +1947,56 @@ compileCSS().then((finalCSS) => {
         } else {
             console.log(`   📦 ${routeNames.length} route${routeNames.length > 1 ? 's' : ''}`);
         }
+    }
+    
+    // Copy public assets to dist for Vercel deployment
+    const publicDir = path.join(process.cwd(), 'public');
+
+    if (fs.existsSync(publicDir)) {
+        console.log("   -> 📁 Copying static assets to dist...");
+
+        // Copy all files from public to dist
+        const files = fs.readdirSync(publicDir);
+        for (const file of files) {
+            const srcPath = path.join(publicDir, file);
+            const destPath = path.join(DIST_DIR, file);
+
+            if (fs.statSync(srcPath).isFile()) {
+                fs.copyFileSync(srcPath, destPath);
+                console.log(`      -> Copied ${file}`);
+            } else if (fs.statSync(srcPath).isDirectory()) {
+                // Copy directories recursively
+                const copyDirRecursive = (src, dest) => {
+                    if (!fs.existsSync(dest)) {
+                        fs.mkdirSync(dest, { recursive: true });
+                    }
+                    const items = fs.readdirSync(src);
+                    for (const item of items) {
+                        const srcItemPath = path.join(src, item);
+                        const destItemPath = path.join(dest, item);
+                        if (fs.statSync(srcItemPath).isDirectory()) {
+                            copyDirRecursive(srcItemPath, destItemPath);
+                        } else {
+                            fs.copyFileSync(srcItemPath, destItemPath);
+                        }
+                    }
+                };
+                copyDirRecursive(srcPath, destPath);
+                console.log(`      -> Copied directory ${file}`);
+            }
+        }
+    }
+
+    // Ensure CSS file is also in dist/_atom for Vercel serverless function
+    const publicCssPath = path.join(PUBLIC_ATOM_DIR, 'styles.css');
+    const distAtomDir = path.join(DIST_DIR, '_atom');
+    if (fs.existsSync(publicCssPath)) {
+        if (!fs.existsSync(distAtomDir)) {
+            fs.mkdirSync(distAtomDir, { recursive: true });
+        }
+        const distCssPath = path.join(distAtomDir, 'styles.css');
+        fs.copyFileSync(publicCssPath, distCssPath);
+        console.log("   -> 🎨 CSS copied to dist/_atom/styles.css for Vercel");
     }
     
     console.log("✅ Build Complete!");

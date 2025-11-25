@@ -1,6 +1,7 @@
+
+
 @Title "Home | ATOM Framework V20 Speed Test";
 @Description "Welcome to the future. Instant Reload & Zero Load. Server-Side Rendered for SEO and speed. Isomorphic Splitting. Write once, runs everywhere (Server + Client).";
-
 // Correct syntax for @Meta
 @Meta { 
   name: "keywords", 

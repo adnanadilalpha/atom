@@ -20,13 +20,39 @@ function generateVercelConfig(projectPath) {
         version: 2,
         installCommand: "npm install",
         buildCommand: "npm run build",
-        outputDirectory: "dist",
+        // Don't set outputDirectory - let Vercel serve from public/ automatically
+        // Static files in public/ are served before routing rules
         routes: [
-            { src: "/_atom/ws", dest: "/api/atom-server.js" },
-            { src: "/(.*)", dest: "/api/atom-server.js" }
+            // WebSocket endpoint - must come before catch-all
+            {
+                src: "/_atom/ws",
+                dest: "/api/atom-server.js"
+            },
+            // Image optimization endpoint - must come before catch-all
+            {
+                src: "/_atom/image",
+                dest: "/api/atom-server.js"
+            },
+            // Revalidation endpoint - must come before catch-all
+            {
+                src: "/_atom/revalidate",
+                dest: "/api/atom-server.js"
+            },
+            // All other routes go to serverless function
+            // Static files (JS, CSS, images) in public/ are served automatically by Vercel
+            // before these routing rules are applied
+            {
+                src: "/(.*)",
+                dest: "/api/atom-server.js"
+            }
         ],
         env: {
             NODE_ENV: "production"
+        },
+        functions: {
+            "api/atom-server.js": {
+                maxDuration: 10
+            }
         }
     };
 
@@ -40,6 +66,7 @@ function generateVercelEntry(projectPath) {
     ensureDir(apiDir);
     const entryPath = path.join(apiDir, 'atom-server.js');
     const entry = `process.env.ATOM_SERVERLESS = 'true';
+process.env.VERCEL = '1';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 require('../dist/server.js');
@@ -155,25 +182,136 @@ function generateDeploymentScripts(projectPath) {
 }
 
 /**
+ * Ensure .gitignore doesn't block deployment files
+ */
+function ensureGitignore(projectPath) {
+    const gitignorePath = path.join(projectPath, '.gitignore');
+    let gitignoreContent = '';
+    
+    if (fs.existsSync(gitignorePath)) {
+        gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+    }
+    
+    // Files that MUST be committed (deployment configs)
+    const mustCommit = [
+        'api/',
+        'vercel.json',
+        'wrangler.toml',
+        'Dockerfile',
+        '.dockerignore'
+    ];
+    
+    // Remove any ignore patterns for required files
+    let updated = false;
+    mustCommit.forEach(file => {
+        // Check if file/dir is being ignored
+        const lines = gitignoreContent.split('\n');
+        const newLines = lines.filter(line => {
+            const trimmed = line.trim();
+            // Skip comments and empty lines
+            if (!trimmed || trimmed.startsWith('#')) return true;
+            // Remove if it matches our required file
+            return !trimmed.includes(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        });
+        
+        if (newLines.length !== lines.length) {
+            gitignoreContent = newLines.join('\n');
+            updated = true;
+        }
+    });
+    
+    // Ensure standard ignores are present (but allow public/_atom to be generated)
+    const standardIgnores = [
+        'node_modules',
+        'dist',
+        'out',
+        '.env.local',
+        '.DS_Store',
+        '*.log'
+    ];
+    
+    standardIgnores.forEach(ignore => {
+        if (!gitignoreContent.includes(ignore)) {
+            gitignoreContent += `\n${ignore}`;
+            updated = true;
+        }
+    });
+    
+    // Note: public/_atom/styles.css is generated during build
+    // Vercel will generate it during their build, so it doesn't need to be in git
+    // But we ensure the directory structure exists
+    
+    if (updated || !fs.existsSync(gitignorePath)) {
+        fs.writeFileSync(gitignorePath, gitignoreContent.trim() + '\n');
+    }
+}
+
+/**
+ * Verify build output exists
+ */
+function verifyBuildOutput(projectPath) {
+    const distDir = path.join(projectPath, 'dist');
+    const publicAtomDir = path.join(projectPath, 'public', '_atom');
+    
+    const checks = {
+        distExists: fs.existsSync(distDir),
+        distServerExists: fs.existsSync(path.join(distDir, 'server.js')),
+        distSSRExists: fs.existsSync(path.join(distDir, 'ssr.js')),
+        distClientExists: fs.existsSync(path.join(distDir, 'client.js')),
+        cssExists: fs.existsSync(path.join(publicAtomDir, 'styles.css')) || 
+                   fs.existsSync(path.join(distDir, '_atom', 'styles.css'))
+    };
+    
+    const allGood = Object.values(checks).every(v => v === true);
+    
+    if (!allGood) {
+        console.log('⚠️  Build output verification:');
+        Object.entries(checks).forEach(([key, value]) => {
+            console.log(`   ${value ? '✅' : '❌'} ${key}`);
+        });
+        console.log('💡 Run `atom build` first to generate required files');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * Setup deployment for a specific platform
  */
 function setupDeployment(platform, projectPath = process.cwd()) {
-    console.log(`🚀 Setting up ${platform} deployment...`);
+    console.log(`🚀 Setting up ${platform} deployment...\n`);
+    
+    // Ensure .gitignore is correct
+    ensureGitignore(projectPath);
+    console.log('✅ .gitignore configured\n');
+    
+    // Verify build output exists
+    if (!verifyBuildOutput(projectPath)) {
+        console.log('\n❌ Deployment setup incomplete - build required files first');
+        return;
+    }
     
     switch (platform) {
         case 'vercel':
             generateVercelConfig(projectPath);
             generateVercelEntry(projectPath);
             generateDeploymentScripts(projectPath);
-            console.log('✅ Vercel configuration created (vercel.json & api/atom-server.js)');
-            console.log('💡 Deploy with: npm run deploy:vercel (requires `vercel` CLI)');
+            console.log('✅ Vercel configuration created:');
+            console.log('   - vercel.json');
+            console.log('   - api/atom-server.js');
+            console.log('   - package.json scripts updated');
+            console.log('\n💡 Deploy with: vercel --prod');
+            console.log('   Or: npm run deploy:vercel (requires `vercel` CLI installed)');
             break;
             
         case 'cloudflare':
             generateCloudflareConfig(projectPath);
             generateDeploymentScripts(projectPath);
-            console.log('✅ Cloudflare Workers configuration created');
-            console.log('💡 Install wrangler: npm install -D wrangler');
+            console.log('✅ Cloudflare Workers configuration created:');
+            console.log('   - wrangler.toml');
+            console.log('   - package.json scripts updated');
+            console.log('\n💡 Install wrangler: npm install -D wrangler');
             console.log('💡 Deploy with: npm run deploy:cloudflare');
             break;
             
@@ -181,15 +319,21 @@ function setupDeployment(platform, projectPath = process.cwd()) {
             generateDockerfile(projectPath);
             generateDockerIgnore(projectPath);
             generateDeploymentScripts(projectPath);
-            console.log('✅ Docker configuration created');
-            console.log('💡 Build with: docker build -t atom-app .');
+            console.log('✅ Docker configuration created:');
+            console.log('   - Dockerfile');
+            console.log('   - .dockerignore');
+            console.log('   - package.json scripts updated');
+            console.log('\n💡 Build with: docker build -t atom-app .');
             console.log('💡 Run with: docker run -p 3000:3000 atom-app');
             break;
             
         default:
             console.log(`❌ Unknown platform: ${platform}`);
             console.log('Available platforms: vercel, cloudflare, docker');
+            return;
     }
+    
+    console.log('\n✅ Deployment setup complete!');
 }
 
 module.exports = {

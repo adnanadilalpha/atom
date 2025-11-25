@@ -1,3 +1,5 @@
+
+
 @View {
   // The Layout receives the specific Page as a child (content)
   const { content } = props || {};

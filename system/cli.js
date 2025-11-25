@@ -432,27 +432,50 @@ async function typecheck() {
 
 function init() {
     console.log("🚀 Initializing ATOM project...");
-    const { createTSConfig } = require('./lib/type-checker');
-    const tsconfigPath = createTSConfig(process.cwd());
-    console.log(`✅ Created ${tsconfigPath}`);
-    console.log("💡 Install TypeScript: npm install -D typescript");
+    const { createJSConfig } = require('./lib/type-checker');
+    const jsconfigPath = createJSConfig(process.cwd());
+    console.log(`✅ Created ${jsconfigPath}`);
+    console.log("💡 For TypeScript support, run: npm install -D typescript && atom init --typescript");
 }
 
-function deploy() {
+async function deploy() {
     const platform = process.argv[3] || 'vercel';
+    
+    if (!platform || !['vercel', 'cloudflare', 'docker'].includes(platform)) {
+        console.log('❌ Invalid platform. Available: vercel, cloudflare, docker');
+        console.log('Usage: atom deploy <platform>');
+        return;
+    }
+    
+    console.log('🔨 Building project first...\n');
+    
+    // Run build first to ensure all files are generated
+    try {
+        await build();
+    } catch (e) {
+        console.error('❌ Build failed:', e?.message || e || 'Unknown error');
+        if (e?.stack) {
+            console.error('Stack:', e.stack.split('\n').slice(0, 3).join('\n'));
+        }
+        console.log('💡 Fix build errors before deploying');
+        console.log('💡 Make sure dependencies are installed: npm install');
+        return;
+    }
+    
+    console.log('\n');
     const { setupDeployment } = require('./lib/deployment');
     setupDeployment(platform);
 }
 
 
 switch (command) {
-    case 'build': build(); break;
+    case 'build': build().catch(e => { console.error('Build error:', e); process.exit(1); }); break;
     case 'start': start(); break;
     case 'dev': dev(); break;
     case 'test': test(); break;
     case 'typecheck': typecheck(); break;
     case 'init': init(); break;
-    case 'deploy': deploy(); break;
+    case 'deploy': deploy().catch(e => { console.error('Deploy error:', e); process.exit(1); }); break;
     case 'create': 
         const projectName = process.argv[3];
         if (!projectName) {

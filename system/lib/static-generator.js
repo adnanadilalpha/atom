@@ -56,13 +56,18 @@ async function generateStaticPages() {
         
         const bundleTag = '<script defer src="/_atom/client.js"></script>';
         
+        // Include CSS link tag for static generation
+        const cssLinkTag = fs.existsSync(path.join(DIST_DIR, '_atom', 'styles.css'))
+            ? '<link rel="stylesheet" href="/_atom/styles.css" data-atom-css>'
+            : '';
+
         // Generate each static page
         for (const route of staticRoutes) {
             try {
                 const result = await SSREngine.renderToString(route);
                 if (result && result.html) {
                     const metaTags = (result.meta || []).map(m => `<meta name="${m.name}" content="${m.content}">`).join('\n');
-                    const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${result.html}</div>${bundleTag}</body></html>`;
+                    const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml">${cssLinkTag}</head><body><div id="root">${result.html}</div>${bundleTag}</body></html>`;
                     
                     // Create directory structure
                     let filePath = route === '/' ? '/index.html' : `${route}/index.html`;

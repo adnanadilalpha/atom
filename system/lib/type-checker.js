@@ -72,7 +72,49 @@ function typeCheckAtomFiles(appDir) {
 }
 
 /**
- * Create tsconfig.json for ATOM projects
+ * Create jsconfig.json for ATOM projects (JavaScript-based framework)
+ */
+function createJSConfig(projectPath) {
+    const jsconfig = {
+        compilerOptions: {
+            target: "ES2020",
+            module: "CommonJS",
+            lib: ["ES2020", "DOM", "DOM.Iterable"],
+            allowJs: true,
+            checkJs: false,
+            noEmit: true,
+            esModuleInterop: true,
+            skipLibCheck: true,
+            forceConsistentCasingInFileNames: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: "preserve",
+            experimentalDecorators: true,
+            emitDecoratorMetadata: true,
+            moduleResolution: "node"
+        },
+        include: [
+            "app/**/*",
+            "system/**/*",
+            "*.js",
+            "*.json"
+        ],
+        exclude: [
+            "node_modules",
+            "dist",
+            "out",
+            ".git",
+            "public"
+        ]
+    };
+
+    const jsconfigPath = path.join(projectPath, 'jsconfig.json');
+    fs.writeFileSync(jsconfigPath, JSON.stringify(jsconfig, null, 2));
+    return jsconfigPath;
+}
+
+/**
+ * Create tsconfig.json for ATOM projects (if TypeScript is explicitly requested)
  */
 function createTSConfig(projectPath) {
     const tsconfig = {
@@ -117,5 +159,6 @@ module.exports = {
     isTypeScriptAvailable,
     generateServerActionTypes,
     typeCheckAtomFiles,
-    createTSConfig
+    createTSConfig,
+    createJSConfig
 };

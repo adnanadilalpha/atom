@@ -1,6 +1,6 @@
 {
   "name": "atom-framework",
-  "version": "1.5.3",
+  "version": "1.5.7",
   "description": "A revolutionary, compiler-driven, full-stack framework for maximum performance and developer simplicity.",
   "main": "system/cli.js",
   "bin": {
@@ -59,7 +59,6 @@
     "@babel/traverse": "^7.23.0",
     "autoprefixer": "^10.4.17",
     "body-parser": "^1.20.3",
-    "canvas-confetti": "^1.9.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "esbuild-wasm": "^0.27.0",

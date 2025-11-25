@@ -1,4 +1,5 @@
 process.env.ATOM_SERVERLESS = 'true';
+process.env.VERCEL = '1';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 require('../dist/server.js');
