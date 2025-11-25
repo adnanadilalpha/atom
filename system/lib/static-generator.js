@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getAllFiles } = require('./parser');
+const HTML_LANG = process.env.ATOM_HTML_LANG || 'en';
 
 async function generateStaticPages() {
     try {
@@ -61,7 +62,7 @@ async function generateStaticPages() {
                 const result = await SSREngine.renderToString(route);
                 if (result && result.html) {
                     const metaTags = (result.meta || []).map(m => `<meta name="${m.name}" content="${m.content}">`).join('\n');
-                    const fullHTML = `<!DOCTYPE html><html><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${result.html}</div>${bundleTag}</body></html>`;
+                    const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${result.title || "Atom App"}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${result.html}</div>${bundleTag}</body></html>`;
                     
                     // Create directory structure
                     let filePath = route === '/' ? '/index.html' : `${route}/index.html`;

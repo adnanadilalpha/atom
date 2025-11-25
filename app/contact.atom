@@ -1,5 +1,5 @@
-@Title "Contact Us - ATOM Showcase Application"
-@Description "Get in touch with the ATOM Framework team."
+@Title "Contact the ATOM Framework Team | Support & Partnerships";
+@Description "Get in touch with the ATOM Framework specialists for enterprise support, partnership opportunities, and developer advocacy guidance tailored to your product roadmap.";
 @meta { name: "keywords", content: "contact, form, submit, ATOM" };
 @Stream
 

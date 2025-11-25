@@ -548,6 +548,31 @@ exports._test_suite_secure_testWebSocket = async function (message) {
     timestamp: new Date().toISOString()
   };
 };
+exports._test_suite_secure_testSqlInjection = async function (data) {
+  console.log('[TEST] SQL injection simulation:', data);
+  const validate = require('../system/lib/validation');
+  const sanitize = require('../system/lib/sanitize');
+  const rawInput = validate.required(data?.input, 'Input');
+  const sanitizedInput = sanitize.sanitizeString(rawInput, {
+    maxLength: 500,
+    removeHTML: true
+  });
+  const suspiciousPatterns = /('|--|;|\/\*|\*\/|xp_)/i;
+  const isSuspicious = suspiciousPatterns.test(rawInput);
+
+  // Simulate parameterized query usage
+  const query = 'SELECT * FROM users WHERE email = $1';
+  const parameters = [sanitizedInput];
+  return {
+    success: true,
+    rawInput,
+    sanitizedInput,
+    isSuspicious,
+    query,
+    parameters,
+    mitigation: isSuspicious ? 'Suspicious input detected. Parameterized query prevents injection.' : 'Input looks safe. Parameterized query still used.'
+  };
+};
 
 const APIRoutes = [];
 APIRoutes.push({ path: '/api/health', handler: exports._api_health_API });

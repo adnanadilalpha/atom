@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.2] - 2025-02-XX - Stability & SEO Accuracy Release
+
+### Added
+- **Security test suite** now includes a real SQL injection simulation that demonstrates parameterized query mitigation and exposes detailed telemetry in the HUD.
+- **Configurable HTML `lang` attribute** via `ATOM_HTML_LANG`, applied consistently across dev server responses, streaming SSR, and static exports for better accessibility and SEO signals.
+
+### Fixed
+- **SEO HUD accuracy for `/contact`** by providing a fully qualified @Title/@Description so audits no longer report missing metadata or short titles.
+- **State management harness** reliability in `app/test_suite.atom`, preventing false negatives in batching, persistence, and object/array checks.
+- **Performance test verdicts** now coerce numeric payloads, eliminating spurious “Invalid performance result” failures when durations round down to zero.
+
+### Changed
+- The Security HUD tab now surfaces actionable SQL-injection test results alongside XSS sanitization status, replacing the placeholder alert.
+
 ## [1.5.1] - 2024-12-XX - Build Fixes & Developer Experience Release
 
 ### Fixed

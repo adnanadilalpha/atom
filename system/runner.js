@@ -18,6 +18,7 @@ const PUBLIC_DIR = path.join(process.cwd(), 'public');
 const ROUTES_DIR = path.join(DIST_DIR, 'routes');
 const CLIENT_ROUTES_DIR = path.join(DIST_DIR, '_atom', 'routes');
 const USE_STATIC_BUNDLE = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const HTML_LANG = process.env.ATOM_HTML_LANG || 'en';
 const SERVER_INSTANCE_ID = Date.now().toString();
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
@@ -458,7 +459,7 @@ app.get(/(.*)/, async (req, res) => {
             const bundleTag = USE_STATIC_BUNDLE
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
-            const fullHTML = `<!DOCTYPE html><html><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
+            const fullHTML = `<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title>${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">${initialHTML}</div>${bundleTag}</body></html>`;
             
             // Cache static pages indefinitely
             if (isStatic) {
@@ -492,7 +493,7 @@ app.get(/(.*)/, async (req, res) => {
             const bundleTag = USE_STATIC_BUNDLE
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
-            res.send(`<!DOCTYPE html><html><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div>${bundleTag}</body></html>`);
+            res.send(`<!DOCTYPE html><html lang="${HTML_LANG}"><head><title>${title}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div>${bundleTag}</body></html>`);
         }
     } catch (e) { 
         res.status(500).send(`<h1>Error</h1><pre>${e.stack}</pre>`); 

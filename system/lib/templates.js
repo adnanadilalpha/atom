@@ -1801,7 +1801,8 @@ module.exports.getSSRRuntime = (imports, layoutCode, routes, layoutHierarchyCode
         try {
             // Stream HTML head first
             const metaTags = (match.meta || []).map(m => \`<meta name="\${m.name}" content="\${m.content}">\`).join('\\n');
-            yield \`<!DOCTYPE html><html><head><title>\${match.title || "Atom App"}</title>\${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">\`;
+            const htmlLang = process.env.ATOM_HTML_LANG || 'en';
+            yield \`<!DOCTYPE html><html lang="\${htmlLang}"><head><title>\${match.title || "Atom App"}</title>\${metaTags}<meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" href="/atom-icon.svg" type="image/svg+xml"></head><body><div id="root">\`;
             
             // Stream component content
             const componentProps = { params: match.params || {} };

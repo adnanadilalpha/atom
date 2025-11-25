@@ -565,6 +565,26 @@ Actions.secure_testWebSocket = async (data, options = {}) => {
                         const result = await res.json();
                         return result; 
                     };
+Actions.secure_testSqlInjection = async (data, options = {}) => { 
+                        const method = options.method || "POST";
+                        const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+                        const res = await fetch("/_atom/rpc/_test_suite_secure_testSqlInjection", { 
+                            method, 
+                            headers, 
+                            body: JSON.stringify(data),
+                            ...(options.signal ? { signal: options.signal } : {})
+                        }); 
+                    if (!res.ok) {
+                        const error = await res.json().catch(() => ({ error: res.statusText }));
+                        const errorMsg = error.error || res.statusText;
+                        const enhancedError = new Error(`Server Action "secure_testSqlInjection" failed: ${errorMsg}`);
+                        if (error.function) enhancedError.function = error.function;
+                        if (error.hint) enhancedError.hint = error.hint;
+                        throw enhancedError;
+                    }
+                        const result = await res.json();
+                        return result; 
+                    };
 
 const PageContent = (props) => { 
     // Ensure props is always an object
@@ -1259,7 +1279,6 @@ const PageContent = (props) => {
     addStateLog('🧪 Testing state with objects...', 'info');
     const oldCount = stateTestObject?.count || 0;
     const expectedNewCount = oldCount + 1;
-    stateObjectCountRef.current = expectedNewCount;
     
     setStateTestObject(prev => {
       const newObj = { ...prev, count: (prev?.count || 0) + 1 };
@@ -1271,11 +1290,15 @@ const PageContent = (props) => {
     const maxAttempts = 10;
     const checkState = () => {
       attempts++;
-      const newCount = stateTestObject?.count || 0;
-      addStateLog(`📊 Check ${attempts}: Object count = ${newCount}, Expected = ${expectedNewCount}`, 'info');
+      const refCount = typeof stateObjectCountRef.current === 'number'
+        ? stateObjectCountRef.current
+        : NaN;
+      const fallbackCount = stateTestObject?.count || 0;
+      const currentCount = Number.isFinite(refCount) ? refCount : fallbackCount;
+      addStateLog(`📊 Check ${attempts}: Object count = ${currentCount} (ref: ${refCount}, state: ${fallbackCount}), Expected = ${expectedNewCount}`, 'info');
       
-      if (newCount >= expectedNewCount) {
-        addStateLog(`✅ PASS: Object state updated (${oldCount} → ${newCount})`, 'success');
+      if (currentCount >= expectedNewCount) {
+        addStateLog(`✅ PASS: Object state updated (${oldCount} → ${currentCount})`, 'success');
         setStateTestResults(prev => ({ ...prev, objectState: '✅ PASS' }));
       } else if (attempts < maxAttempts) {
         setTimeout(checkState, 50);
@@ -1292,7 +1315,6 @@ const PageContent = (props) => {
     addStateLog('🧪 Testing state with arrays...', 'info');
     const oldLength = Array.isArray(stateTestArray) ? stateTestArray.length : 0;
     const expectedNewLength = oldLength + 1;
-    stateArrayLengthRef.current = expectedNewLength;
     
     setStateTestArray(prev => {
       const newArr = Array.isArray(prev) ? [...prev, prev.length + 1] : [1];
@@ -1304,11 +1326,15 @@ const PageContent = (props) => {
     const maxAttempts = 10;
     const checkState = () => {
       attempts++;
-      const newLength = Array.isArray(stateTestArray) ? stateTestArray.length : 0;
-      addStateLog(`📊 Check ${attempts}: Array length = ${newLength}, Expected = ${expectedNewLength}`, 'info');
+      const refLength = typeof stateArrayLengthRef.current === 'number'
+        ? stateArrayLengthRef.current
+        : NaN;
+      const fallbackLength = Array.isArray(stateTestArray) ? stateTestArray.length : 0;
+      const currentLength = Number.isFinite(refLength) ? refLength : fallbackLength;
+      addStateLog(`📊 Check ${attempts}: Array length = ${currentLength} (ref: ${refLength}, state: ${fallbackLength}), Expected = ${expectedNewLength}`, 'info');
       
-      if (newLength >= expectedNewLength) {
-        addStateLog(`✅ PASS: Array state updated (length: ${oldLength} → ${newLength})`, 'success');
+      if (currentLength >= expectedNewLength) {
+        addStateLog(`✅ PASS: Array state updated (length: ${oldLength} → ${currentLength})`, 'success');
         setStateTestResults(prev => ({ ...prev, arrayState: '✅ PASS' }));
       } else if (attempts < maxAttempts) {
         setTimeout(checkState, 50);
@@ -1325,7 +1351,6 @@ const PageContent = (props) => {
     addStateLog('🧪 Testing state update batching...', 'info');
     const initialValue = typeof stateTestCounter === 'number' ? stateTestCounter : 0;
     const expectedFinalValue = initialValue + 3;
-    stateCounterRef.current = expectedFinalValue;
     
     // Multiple rapid updates
     setStateTestCounter(prev => (typeof prev === 'number' ? prev : 0) + 1);
@@ -1337,8 +1362,10 @@ const PageContent = (props) => {
     const maxAttempts = 15;
     const checkState = () => {
       attempts++;
-      const finalValue = typeof stateTestCounter === 'number' ? stateTestCounter : 0;
-      addStateLog(`📊 Check ${attempts}: Final value = ${finalValue}, Expected >= ${expectedFinalValue}`, 'info');
+      const refValue = typeof stateCounterRef.current === 'number' ? stateCounterRef.current : NaN;
+      const fallbackValue = typeof stateTestCounter === 'number' ? stateTestCounter : 0;
+      const finalValue = Number.isFinite(refValue) ? refValue : fallbackValue;
+      addStateLog(`📊 Check ${attempts}: Final value = ${finalValue} (ref: ${refValue}, state: ${fallbackValue}), Expected >= ${expectedFinalValue}`, 'info');
       
       if (finalValue >= expectedFinalValue) {
         addStateLog(`✅ PASS: State batching working (${initialValue} → ${finalValue})`, 'success');
@@ -1365,7 +1392,6 @@ const PageContent = (props) => {
     addStateLog('🧪 Testing state persistence across re-renders...', 'info');
     const testValue = 'Persistent Value ' + Date.now();
     addStateLog(`📝 Setting state to: "${testValue}"`, 'info');
-    persistTestRef.current = testValue;
     
     setPersistTestState(testValue);
     
@@ -1373,8 +1399,10 @@ const PageContent = (props) => {
     const maxAttempts = 10;
     const checkState = () => {
       attempts++;
-      const currentValue = typeof persistTestState === 'string' ? persistTestState : '';
-      addStateLog(`📊 Check ${attempts}: Current state value: "${currentValue}"`, 'info');
+      const refValue = typeof persistTestRef.current === 'string' ? persistTestRef.current : '';
+      const fallbackValue = typeof persistTestState === 'string' ? persistTestState : '';
+      const currentValue = refValue || fallbackValue;
+      addStateLog(`📊 Check ${attempts}: Current state value: "${currentValue}" (ref: "${refValue}", state: "${fallbackValue}")`, 'info');
       
       if (currentValue && (currentValue === testValue || currentValue.includes('Persistent Value'))) {
         addStateLog(`✅ PASS: State persisted correctly (${currentValue})`, 'success');
@@ -1707,6 +1735,41 @@ const PageContent = (props) => {
     }
   };
   
+  const testSqlInjectionPrevention = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const payload = await Actions.secure_testSqlInjection({
+        input: `' OR 1=1; DROP TABLE users; --`
+      });
+      
+      if (payload && payload.success) {
+        const statusMessage = payload.isSuspicious
+          ? 'Suspicious input detected and neutralized via parameterized query'
+          : 'Input sanitized and executed via parameterized query';
+        const details = `Query: ${payload.query} | Parameters: ${JSON.stringify(payload.parameters)}`;
+        setTestResults(prev => ({
+          ...prev,
+          sqlInjection: `✅ PASS: ${statusMessage}. ${details}`
+        }));
+      } else {
+        setTestResults(prev => ({
+          ...prev,
+          sqlInjection: '❌ FAIL: Unexpected SQL injection response'
+        }));
+      }
+    } catch (err) {
+      setError(err.message);
+      setTestResults(prev => ({
+        ...prev,
+        sqlInjection: `❌ FAIL: ${err.message}`
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // ========================================================================
   // ERROR HANDLING TESTS
   // ========================================================================
@@ -1735,11 +1798,25 @@ const PageContent = (props) => {
     
     try {
       const result = await Actions.secure_testPerformance(1000);
-      if (result && result.iterations && result.duration) {
-        const avgTime = result.averageTime ? result.averageTime.toFixed(2) : (result.duration / result.iterations).toFixed(2);
-        setTestResults(prev => ({ ...prev, performance: `✅ PASS: ${result.iterations} iterations in ${result.duration}ms (avg: ${avgTime}ms)` }));
+      const iterationsNum = Number(result?.iterations);
+      const durationNum = Number(result?.duration);
+      const hasIterations = Number.isFinite(iterationsNum);
+      const hasDuration = Number.isFinite(durationNum);
+      if (result && hasIterations && hasDuration) {
+        const avgBase = Number.isFinite(result?.averageTime)
+          ? result.averageTime
+          : (iterationsNum !== 0 ? durationNum / iterationsNum : 0);
+        const avgTime = Number.isFinite(avgBase) ? avgBase.toFixed(2) : '0.00';
+        setTestResults(prev => ({
+          ...prev,
+          performance: `✅ PASS: ${iterationsNum} iterations in ${durationNum}ms (avg: ${avgTime}ms)`
+        }));
       } else {
-        setTestResults(prev => ({ ...prev, performance: '❌ FAIL: Invalid performance result' }));
+        console.warn('[STATE TEST ERROR] Invalid performance payload:', result);
+        setTestResults(prev => ({
+          ...prev,
+          performance: '❌ FAIL: Invalid performance result'
+        }));
       }
     } catch (err) {
       setError(err.message);
@@ -2555,22 +2632,38 @@ const PageContent = (props) => {
     // Security Tests
     currentTest === 'security' && div([
       h2("🛡️ Security Tests", { className: "text-2xl font-bold mb-4" }),
-      p("Security tests are integrated into validation and sanitization tests.", {
+      p("Run targeted security checks for XSS sanitization and SQL injection prevention using parameterized queries.", {
         className: "text-gray-600 mb-4"
       }),
-            div([
+      div([
         button("Test XSS Prevention", {
           onclick: testSanitization,
           disabled: loading,
           className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
         }),
         button("Test SQL Injection Prevention", {
-          onclick: () => {
-            alert('SQL injection prevention is handled by parameterized queries. Test by attempting SQL injection in forms.');
-          },
-          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2"
+          onclick: testSqlInjectionPrevention,
+          disabled: loading,
+          className: "px-4 py-2 bg-blue-600 text-white rounded mr-2 mb-2 disabled:opacity-50"
         })
-      ], { className: "mb-4" })
+      ], { className: "mb-4" }),
+      div([
+        h3("Results:", { className: "font-bold mb-2" }),
+        ...(() => {
+          const securityResults = Object.entries(testResults || {})
+            .filter(([key]) => ['sanitization', 'sqlInjection'].includes(key));
+          if (securityResults.length > 0) {
+            return securityResults.map(([key, value]) =>
+              div(`${key}: ${value}`, {
+                className: "p-2 bg-gray-100 rounded mb-1"
+              })
+            );
+          }
+          return [div("No security test results yet. Run a test above.", {
+            className: "p-2 bg-gray-50 rounded text-gray-500 italic"
+          })];
+        })()
+      ])
     ], { className: "mb-8 p-4 border rounded" }),
     
     // Loading Indicator
