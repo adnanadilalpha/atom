@@ -92,12 +92,26 @@ Ready to dive deeper?
 - **[Database](./docs/DATABASE.md)** - Connect to Postgres, MySQL, or MongoDB.
 - **[Deployment](./docs/DEPLOYMENT.md)** - Ship to production.
 
-## 🤝 Join the Community
+## 🤝 Contributing
 
-ATOM is open source and built by developers, for developers.
-- [GitHub Repository](https://github.com/atom-framework/atom)
-- [Report an Issue](https://github.com/atom-framework/atom/issues)
+We welcome contributions from everyone! Here's how to get involved:
+
+- **[Contributing Guide](./CONTRIBUTING.md)** - Learn how to contribute
+- [GitHub Repository](https://github.com/adnanadilalpha/atom)
+- [Report an Issue](https://github.com/adnanadilalpha/atom/issues)
+- [Submit a Pull Request](https://github.com/adnanadilalpha/atom/pulls)
+
+### Quick Contribution Flow
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make your changes and test: `npm test && atom build`
+4. Submit a PR - CI will run automatically
+5. Once approved, your PR will auto-merge to main! 🎉
+
+## 🤝 Community
+
+ATOM is open source and built by developers, for developers. Join us!
 
 ## 📄 License
 
-MIT © [ATOM Framework](https://github.com/atom-framework)
+MIT © [ATOM Framework](https://github.com/adnanadilalpha/atom)

@@ -1,0 +1,41 @@
+name: Auto-merge approved PRs
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+
+    if: >
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !github.event.pull_request.draft
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test -- --watchAll=false
+
+    - name: Build project
+      run: npm run build
+
+    - name: Enable auto-merge for approved PR
+      run: gh pr merge --auto --merge "$PR_URL"
+      env:
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

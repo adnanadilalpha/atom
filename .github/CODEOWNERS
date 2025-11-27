@@ -1,0 +1,20 @@
+# Code owners for ATOM Framework
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/managing-repository-settings/about-code-owners
+
+# Global owners - can approve any changes
+* @adnanadilalpha
+
+# Core system files - require maintainer approval
+system/ @adnanadilalpha
+package.json @adnanadilalpha
+package-lock.json @adnanadilalpha
+
+# Documentation - can be approved by maintainers or experienced contributors
+docs/ @adnanadilalpha
+
+# Examples and templates - can be approved by maintainers
+examples/ @adnanadilalpha
+templates/ @adnanadilalpha
+
+# CI/CD workflows - require maintainer approval
+.github/ @adnanadilalpha

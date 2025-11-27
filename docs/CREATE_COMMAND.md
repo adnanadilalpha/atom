@@ -56,7 +56,7 @@ my-app/
 
 Dependencies are **automatically installed** after project creation. You don't need to run `npm install` manually!
 
-If installation fails (e.g., package not published yet), you'll see instructions to run it manually.
+If installation fails (e.g., network issues), you'll see instructions to run it manually.
 
 ## Templates
 
@@ -101,7 +101,7 @@ Open [http://localhost:3000](http://localhost:3000) to see your app!
 ## Troubleshooting
 
 **npm install fails:**
-- If `atom-framework` package isn't published yet, you'll need to install it manually
+- Check your network connection and npm registry access
 - For local development, you can use `npm link` or install from a local path
 
 **Template files missing:**

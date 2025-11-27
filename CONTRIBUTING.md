@@ -1,45 +1,113 @@
 # Contributing to ATOM Framework
 
-Thank you for your interest in contributing to ATOM Framework!
+Thank you for your interest in contributing to ATOM Framework! 🎉
 
-## Getting Started
+## Quick Start
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/your-username/atom.git`
-3. Install dependencies: `npm install`
-4. Make your changes
-5. Test your changes: `npm test`
-6. Submit a pull request
+1. **Fork & Clone**
+   ```bash
+   git clone https://github.com/your-username/atom.git
+   cd atom
+   npm install
+   ```
 
-## Development
+2. **Make Changes**
+   ```bash
+   # Create a feature branch
+   git checkout -b feature/your-feature-name
+
+   # Make your changes, then test
+   npm test
+   atom build
+   ```
+
+3. **Submit PR**
+   - Push your branch: `git push origin feature/your-feature-name`
+   - Create a PR on GitHub
+   - CI will run automatically
+   - Once approved, PR will auto-merge to main
+
+## Development Workflow
 
 ```bash
-# Run in development mode
+# Development server
 atom dev
 
-# Build the project
+# Build for production
 atom build
 
-# Test the build
+# Test production build
 atom start
+
+# Run tests
+npm test
+
+# Type checking (if using TypeScript)
+npm run typecheck
 ```
 
-## Code Style
+## CI/CD Pipeline
 
+### Automated Checks
+- ✅ **Tests**: Run on every PR and push
+- ✅ **Build**: Ensures project compiles successfully
+- ✅ **Linting**: Code quality checks
+- ✅ **TypeScript**: Type safety verification
+- ✅ **Coverage**: Test coverage reporting
+
+### Auto-Merge Process
+Approved PRs will automatically merge to `main` branch after:
+1. All CI checks pass ✅
+2. At least one maintainer approval ✅
+3. No conflicts with main ✅
+4. Not a draft PR ✅
+
+### Release Process
+New versions are published automatically when you:
+1. Update version in `package.json`
+2. Create a git tag: `git tag v1.x.x && git push --tags`
+3. GitHub Actions publishes to npm automatically
+
+## Code Guidelines
+
+### Style
 - Use consistent indentation (2 spaces)
 - Follow existing code patterns
-- Add comments for complex logic
-- Keep functions focused and small
+- Add JSDoc comments for public APIs
+- Keep functions focused and small (< 50 lines)
 
-## Pull Request Process
+### Testing
+- Add tests for new features
+- Update tests when changing existing code
+- Aim for >80% test coverage
+- Test both success and error cases
 
-1. Update documentation if needed
-2. Add tests for new features
-3. Ensure all tests pass
-4. Update CHANGELOG.md
-5. Submit PR with clear description
+### Documentation
+- Update docs for API changes
+- Add examples for new features
+- Keep CHANGELOG.md current
 
-## Questions?
+## Branch Protection
 
-Open an issue or reach out to the maintainers!
+The `main` branch is protected:
+- ✅ Requires PR reviews
+- ✅ Requires CI to pass
+- ✅ Auto-merge enabled for approved PRs
+- ✅ No direct pushes allowed
+
+## Getting Help
+
+- 📖 **Documentation**: Check `/docs` folder
+- 🐛 **Issues**: Open bug reports on GitHub
+- 💬 **Discussions**: Use GitHub Discussions for questions
+- 📧 **Contact**: Reach out to maintainers
+
+## Recognition
+
+Contributors are recognized in:
+- CHANGELOG.md for each release
+- GitHub contributors list
+- Future Hall of Fame (coming soon!)
+
+Thank you for contributing to ATOM Framework! 🚀
 
