@@ -59,7 +59,7 @@
     "@babel/traverse": "^7.23.0",
     "atom-framework": "^1.5.8",
     "autoprefixer": "^10.4.17",
-    "body-parser": "^1.20.3",
+    "body-parser": "^2.2.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "esbuild-wasm": "^0.27.0",
