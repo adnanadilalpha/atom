@@ -88,49 +88,75 @@ Image({
 
 ## Server Actions
 
-Functions starting with `secure_` run on the server.
+Functions whose names start with `secure_` are executed on the server. The compiler rewrites them into RPC endpoints and generates matching client stubs automatically.
 
-**Option 1: Inline (within page)**
+### Option 1: Inline (per page)
+
 ```atom
 @Flow Actions {
-  secure_processData: async function(data) {
-    // Server-side code
+  secure_processData: async function (data) {
+    // Server-side code (runs in Node)
     return { result: data.processed };
   }
-};
+}
+
+@View {
+  const handleSubmit = async () => {
+    const result = await Actions.secure_processData({ input: "demo" });
+    console.log(result);
+  };
+
+  return button("Submit", { onclick: handleSubmit });
+}
 ```
 
-**Option 2: Shared Actions File (Recommended)**
-Create `app/_actions.atom` or `app/_actions.js`:
+Use `Actions.secure_processData` anywhere in the file to call the RPC endpoint.
 
-**Using .atom file:**
+### Option 2: Shared `.atom` action modules (recommended)
+
+Place shared logic in an `.atom` file so the compiler can extract the `@Flow Actions` block and build client stubs for you:
+
 ```atom
+// app/_actions/data.atom
 @Flow Actions {
-  secure_processData: async function(data) {
+  secure_processData: async function (data) {
     return { result: data.processed };
+  },
+  secure_getUser: async function (userId) {
+    return { id: userId };
   }
 }
 ```
 
-**Using .js file:**
-```javascript
-export async function secure_processData(data) {
-  return { result: data.processed };
+Use them anywhere:
+
+```atom
+import { secure_processData } from './_actions/data.atom';
+
+@View {
+  return button("Run", {
+    onclick: async () => {
+      const result = await secure_processData({ input: "demo" });
+      console.log(result);
+    }
+  });
 }
 ```
 
-Import in `.atom` files (both work):
-```atom
-import { secure_processData } from './_actions.atom';
-// or
-import { secure_processData } from './_actions.js';
-```
+Because the import comes from another `.atom` file, the build system generates the client-side fetch wrapper automatically—no need to redeclare the action locally.
 
-**Note:** The framework automatically processes `.atom` imports and extracts `@Flow Actions` blocks.
+### Using `.js` helpers
 
-Call from client:
+Regular `.js` or `.ts` modules are great for sharing validation or database helpers, but they **do not** become RPC endpoints on their own. If you import a helper from `.js`, wrap it inside an `@Flow Actions` block so the compiler can expose it:
+
 ```atom
-const result = await Actions.secure_processData({ input: "test" });
+import { createToken } from './auth-helpers.js';
+
+@Flow Actions {
+  secure_issueToken: async function (payload) {
+    return createToken(payload);
+  }
+}
 ```
 
 ## Hooks

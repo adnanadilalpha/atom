@@ -123,18 +123,26 @@ CLOUDFLARE_ACCOUNT_ID=...
 
 ## Static Export
 
-For static sites:
+Only routes marked with the `@Static` directive are pre-rendered. During `atom build` the compiler:
+
+1. Runs the normal SSR/CSR build into `dist/`
+2. Loads `dist/ssr.js`
+3. Renders every `@Static` route and writes HTML to `out/`
 
 ```bash
 atom build
-# Generates static files in out/ directory
+# Look for "Static generation complete! Output: out" in the logs
 ```
 
-Deploy `out/` directory to:
-- Netlify
-- GitHub Pages
-- Cloudflare Pages
-- Any static host
+Structure:
+
+```
+out/
+├── index.html          # app/home.atom with @Static
+└── docs/getting-started/index.html
+```
+
+Deploy the `out/` directory to any static host (Netlify, Cloudflare Pages, GitHub Pages, etc.). Routes without `@Static` continue to render dynamically via `atom start`.
 
 ## Edge Deployment
 

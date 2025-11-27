@@ -1,61 +1,84 @@
 # Getting Started with ATOM Framework
 
-## Installation
+ATOM ships as a single CLI (`atom`) that compiles your `.atom` files, watches the filesystem, spins up an SSR server, and even orchestrates deployments. This guide is kept in lockstep with the current codebase (`package.json` v**1.5.8**) so you can trust every command below.
 
-### Create a New Project (Recommended)
+## Requirements
 
-The easiest way to get started is using `npx` (no installation required):
+- Node.js **18.0.0 or newer** (`package.json` → `"engines": { "node": ">=18.0.0" }`)
+- npm ≥ 9 (comes with the supported Node releases)
+- macOS, Linux, or WSL2 (Windows-native builds are not officially tested yet)
+
+Verify your installed version anytime:
+
+```bash
+atom --version
+# or
+npm list atom-framework
+```
+
+## Create a New Project
+
+### One-shot (recommended)
 
 ```bash
 npx atom-framework create my-app
 ```
 
-This will:
-1. **Ask interactive questions** (like Next.js):
-   - Choose a template (Basic, Full-Stack, or Empty)
-   - Enable TypeScript? (Yes/No)
-   - Enable Tailwind CSS? (Yes/No, defaults to Yes)
-   - Enable ESLint? (Yes/No)
-2. **Create the project structure**
-3. **Automatically install dependencies** (no need to run `npm install` manually!)
+What happens (driven by `system/cli.js#createProject`):
 
-After creation, you're ready to start:
+1. Interactive prompts pick a template and tooling.
+2. The CLI scaffolds `app/`, `public/`, `_components/`, etc.
+3. `npm install` runs automatically (with helpful guidance if it fails).
+
+Then launch dev mode:
 
 ```bash
 cd my-app
 atom dev
 ```
 
-### Global Installation (Optional)
-
-If you prefer to install globally:
+### Global install (optional)
 
 ```bash
 npm install -g atom-framework
 atom create my-app
 ```
 
-### Skip Interactive Prompts
-
-To use defaults without prompts:
+### Skipping prompts
 
 ```bash
 npx atom-framework create my-app --skipPrompts
 ```
 
-This creates a project with:
-- Basic template
-- TypeScript: No
-- Tailwind CSS: Yes
-- ESLint: No
+Defaults (taken from the CLI flags):
 
-## Your First ATOM App
+| Setting      | Default |
+|--------------|---------|
+| Template     | `basic` |
+| TypeScript   | `false` |
+| Tailwind CSS | `true`  |
+| ESLint       | `false` |
 
-When you create a new project, you'll get a starter template with `app/home.atom` already created. You can edit it or create new pages.
+Templates live in `/templates/{basic,fullstack,empty}` so you can inspect exactly what will be copied.
 
-### 1. Create a Page
+## Project Layout
 
-Create `app/home.atom` (or edit the existing one):
+After creation you’ll see:
+
+```
+my-app/
+├── app/
+│   ├── home.atom       # Pages → routes
+│   ├── _components/    # Auto-registered UI building blocks
+│   └── _layout.atom    # Optional root layout
+├── public/             # Static assets copied into dist
+├── package.json        # Includes "atom dev/build/start"
+└── tailwind.config.js  # Added when Tailwind is enabled
+```
+
+## Building Your First Page
+
+Every `.atom` file can declare metadata and UI blocks:
 
 ```atom
 @Title "Welcome to ATOM"
@@ -69,266 +92,137 @@ Create `app/home.atom` (or edit the existing one):
 }
 ```
 
-## Updating ATOM Framework
+`app/home.atom` renders `/` (the compiler remaps `/home` → `/`). Any other file in `app/` becomes a route, including dynamic segments like `users/[id].atom` and catch-alls `docs/[...slug].atom`.
 
-### Update in Existing Projects
+## Auto-imported Components
 
-If you have an existing ATOM project and want to update to the latest version:
+Files in `app/_components/*.atom` are parsed up front (`system/compiler.js` lines 1045‑1094) and attached to `globalThis`. That means you can reference `Button()` or `Header()` anywhere without manual imports:
 
-**Option 1: Update package.json and reinstall**
-```bash
-# Edit package.json and change the version:
-# "atom-framework": "^1.5.0"
-
-# Then reinstall:
-npm install
-```
-
-**Option 2: Use npm update**
-```bash
-npm update atom-framework
-```
-
-**Option 3: Install specific version**
-```bash
-npm install atom-framework@latest
-```
-
-### Update Global CLI (if installed globally)
-
-If you installed ATOM globally:
-```bash
-npm install -g atom-framework@latest
-```
-
-### Check Current Version
-
-To see what version you're using:
-```bash
-atom --version
-# or
-npm list atom-framework
-```
-
-### 2. Start Development Server
-
-```bash
-cd my-app
-atom dev
-```
-
-Visit `http://localhost:3000` - you should see your page!
-
-**Note:** If dependencies weren't installed automatically, run `npm install` first.
-
-## Core Concepts
-
-### Pages and Routes
-
-Files in `app/` become routes:
-- `app/home.atom` → `/` or `/home`
-- `app/about.atom` → `/about`
-- `app/users/[id].atom` → `/users/:id` (dynamic route)
-
-### Components
-
-Components in `app/_components/` are auto-imported:
-
-**`app/_components/Button.atom`:**
 ```atom
+// app/_components/Button.atom
 @View {
-  const { children, ...restProps } = props || {};
+  const { children, ...rest } = props || {};
   return button(children || "Button", {
     className: "px-4 py-2 bg-blue-600 text-white rounded",
-    ...restProps
+    ...rest
   });
 }
-```
 
-**Use anywhere:**
-```atom
+// app/about.atom
 @View {
   return Button("Click me", { onclick: () => alert("Clicked!") });
 }
 ```
 
-### Layouts
+Add optional `@Style` blocks inside components or pages—those styles are merged into `public/_atom/styles.css`, copied to `dist/_atom/styles.css`, and injected automatically during dev.
 
-**IMPORTANT: Layouts use `props.content`, NOT `props.children`**
+## Layouts Use `props.content`
 
-Create `app/_layout.atom`:
+Layouts wrap the rendered page. The compiler (see `layoutHierarchyCode`) passes each layout a `content` prop, not `children`, so always destructure from `props`:
 
 ```atom
 @View {
-  // Layout receives page content via props.content
   const { content } = props || {};
-  
   return div([
     Header(),
-    main(content ? content : div("Loading..."), { className: "min-h-screen" }),
+    main(content || div("Loading..."), { className: "min-h-screen" }),
     Footer()
   ]);
 }
 ```
 
-**Key Points:**
-- ✅ Use `props.content` for layouts (NOT `props.children`)
-- ✅ Always destructure: `const { content } = props || {};`
-- ✅ Handle undefined content gracefully
+You can nest layouts by placing `_layout.atom` files inside route folders. The compiler walks directories and applies them from inner to outer automatically.
 
-### Server Actions
+## Server Actions (`@Flow Actions`)
 
-Functions starting with `secure_` run on the server.
+Server actions are declared inside `@Flow Actions { ... }` blocks. During compilation:
 
-**Inline (in page):**
+- Functions prefixed with `secure_` stay on the server (`system/compiler.js` lines 1432‑1458).
+- Matching client stubs call `/_atom/rpc/<id>` via `fetch`.
+- Non-secure functions remain client-side helpers.
+
+Inline example:
+
 ```atom
 @Flow Actions {
-  secure_getUser: async function(userId) {
-    return { id: userId, name: "John" };
-  }
-};
-```
-
-**Shared (recommended):** Create `app/_actions.atom` or `app/_actions.js`:
-
-**Using .atom file:**
-```atom
-@Flow Actions {
-  secure_getUser: async function(userId) {
-    return { id: userId, name: "John" };
+  secure_getUser: async function (userId) {
+    return { id: userId, name: "Ada" };
   }
 }
-```
-
-**Using .js file:**
-```javascript
-export async function secure_getUser(userId) {
-  return { id: userId, name: "John" };
-}
-```
-
-Import in `.atom` files (both work):
-```atom
-import { secure_getUser } from './_actions.atom';
-// or
-import { secure_getUser } from './_actions.js';
 
 @View {
   const [user, setUser] = useState(null);
-  
+
   if (!user) {
     Actions.secure_getUser(1).then(setUser);
     return div("Loading...");
   }
-  
+
   return div(user.name);
 }
 ```
 
-**Note:** Use `.js` files for shared actions, not `.atom` files.
+Shared actions can live in `app/_actions.atom` (recommended). Importing from `.js` will **not** create RPC endpoints, so stick to `.atom` + `@Flow Actions` whenever you want `secure_` behavior.
 
-### State Management
-
-Use `useState` for client-side state:
-
-```atom
-@View {
-  const [count, setCount] = useState(0);
-  
-  return div([
-    span(count),
-    button("+", { onclick: () => setCount(count + 1) })
-  ]);
-}
-```
-
-## Building Your App
-
-### Development Build
+## Development Loop
 
 ```bash
 atom dev
 ```
 
-This starts the development server with:
-- Hot module replacement (HMR)
-- Source maps for debugging
-- Detailed error messages
-- Fast refresh on file changes
+Features wired up in `system/cli.js#dev`:
 
-### Production Build
+- Compiles with `--dev` to enable source maps and detailed errors.
+- Watches `app/**/*.atom` and hot-rebuilds with debouncing.
+- Restarts the runner automatically so the browser reloads.
+- Injects HUD tooling for performance/SEO/error insights plus HMR.
 
-```bash
-atom build
-```
+Visit `http://localhost:3000` by default.
 
-This creates an optimized production build:
-- Minified and optimized code
-- Code splitting for routes
-- Tree shaking for unused code
-- Bundle size analysis
-- Static page generation (if using `@Static`)
+## Build, Start, Deploy
 
-### Production Server
-
-```bash
-atom start
-```
-
-Starts the production server with:
-- SSR enabled
-- Caching for performance
-- Error handling
-- Logging
+| Command | What happens |
+|---------|--------------|
+| `atom build` | Compiles routes, bundles via esbuild into `dist/client.js`, `dist/server.js`, `dist/ssr.js`, writes route chunks under `dist/routes/`, copies `public/` assets. |
+| `atom start` | Runs the production server (`system/runner.js`) against the compiled output. |
+| `atom test` | Executes the lightweight test harness in `system/lib/test-runner.js`. |
+| `atom typecheck` | Generates and validates JS config using the framework’s TypeScript-aware analyzer. |
+| `atom init` | Creates `jsconfig.json` in existing projects for editor IntelliSense. |
+| `atom deploy <vercel|cloudflare|docker>` | Builds first, then hands off to the requested platform helper in `system/lib/deployment.js`. |
 
 ### Build Output
 
-After building, you'll find:
 ```
 dist/
-├── client.js      # Client-side bundle
-├── server.js      # Server-side bundle
-├── ssr.js         # SSR runtime
-└── routes/        # Route-specific bundles
+├── client.js        # Hydration + router runtime
+├── server.js        # Server actions + RPC endpoints
+├── ssr.js           # Node-compatible renderer
+├── routes/          # Code-split route bundles
+└── _atom/styles.css # Copied CSS for serverless platforms
 ```
 
-## Why Build with ATOM?
+`public/_atom/client.js` is also generated for the dev server so you can inspect the output without digging into `dist/`.
 
-### 1. Stability First 🛡️
+## Updating ATOM in Existing Apps
 
-ATOM Framework prioritizes stability and reliability:
-- **Error Boundaries**: Components are wrapped in error boundaries to prevent crashes
-- **Validation**: Comprehensive validation for hooks, props, and DOM operations
-- **Memory Management**: Proper cleanup of effects, refs, and event listeners
-- **Graceful Degradation**: Handles edge cases and invalid data gracefully
+1. Bump the dependency in `package.json`:
+   ```json
+   {
+     "dependencies": {
+       "atom-framework": "^1.5.8"
+     }
+   }
+   ```
+2. Reinstall: `npm install`
+3. (Optional) `npm update atom-framework` or `npm install atom-framework@latest`
+4. For global CLIs: `npm install -g atom-framework@latest`
 
-### 2. Developer Productivity ⚡
+## Troubleshooting Checklist
 
-- **Less Boilerplate**: No API routes, no complex routing setup
-- **Auto-Imports**: Components automatically available
-- **Hot Reload**: Instant feedback on changes
-- **Type Safety**: Full TypeScript support
-
-### 3. Performance 🚀
-
-- **SSR by Default**: Every page is server-rendered
-- **Code Splitting**: Automatic route-based splitting
-- **Optimized Builds**: Minified, tree-shaken, optimized
-- **Image Optimization**: Automatic optimization with modern formats
-
-### 4. Modern Features 🎯
-
-- **Server Actions**: Call server code directly (no API boilerplate)
-- **Edge Runtime**: Deploy to edge networks globally
-- **ISR/SSG**: Incremental Static Regeneration and Static Site Generation
-- **Streaming SSR**: Progressive HTML streaming
-
-### 5. Production Ready ✅
-
-- **Error Handling**: Comprehensive error boundaries and validation
-- **Memory Safe**: Proper cleanup prevents memory leaks
-- **Type Safe**: Full TypeScript support
-- **Battle-Tested**: Built with stability as a core principle
+- `atom dev` fails immediately → ensure Node ≥ 18 and delete any stray `dist/` folder.
+- Server actions returning network errors → confirm the function name starts with `secure_`.
+- Components not found → check they’re saved under `app/_components/Name.atom` with an `@View`.
+- Layout renders undefined → confirm you destructured `const { content } = props || {};`.
 
 ## Next Steps
 

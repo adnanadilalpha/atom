@@ -24,139 +24,99 @@ npm install jsonwebtoken bcryptjs
 
 ### 1. Create Authentication Server Actions
 
-Create `app/_actions/auth.js`:
+Put the server-only logic in an `.atom` file so the compiler can expose each `secure_` function as an RPC endpoint automatically:
 
-```javascript
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const DB = require('../db');
+```atom
+// app/_actions/auth.atom
+@Resource jwt from 'jsonwebtoken';
+@Resource bcrypt from 'bcryptjs';
+@Resource DB from '../db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-async function secure_login(credentials) {
-  const { email, password } = credentials;
-  
-  // Validate input
-  if (!email || !password) {
-    throw new Error('Email and password are required');
-  }
-  
-  // Find user
-  const result = await DB.query(
-    'SELECT * FROM users WHERE email = $1',
-    [email]
-  );
-  
-  if (result.rows.length === 0) {
-    throw new Error('Invalid credentials');
-  }
-  
-  const user = result.rows[0];
-  
-  // Verify password
-  const isValid = await bcrypt.compare(password, user.password_hash);
-  if (!isValid) {
-    throw new Error('Invalid credentials');
-  }
-  
-  // Generate JWT
-  const token = jwt.sign(
-    { userId: user.id, email: user.email },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-  
-  // Return user (without password)
-  const { password_hash, ...userWithoutPassword } = user;
-  
-  return { token, user: userWithoutPassword };
-}
-
-async function secure_register(userData) {
-  const { email, password, name } = userData;
-  
-  // Validate input
-  if (!email || !password) {
-    throw new Error('Email and password are required');
-  }
-  
-  // Check if user exists
-  const existing = await DB.query(
-    'SELECT id FROM users WHERE email = $1',
-    [email]
-  );
-  
-  if (existing.rows.length > 0) {
-    throw new Error('User already exists');
-  }
-  
-  // Hash password
-  const password_hash = await bcrypt.hash(password, 10);
-  
-  // Create user
-  const result = await DB.query(
-    'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
-    [email, password_hash, name]
-  );
-  
-  const user = result.rows[0];
-  
-  // Generate token
-  const token = jwt.sign(
-    { userId: user.id, email: user.email },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-  
-  return { token, user };
-}
-
-async function secure_getCurrentUser(token) {
-  if (!token) {
-    throw new Error('No token provided');
-  }
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const result = await DB.query(
-      'SELECT id, email, name, created_at FROM users WHERE id = $1',
-      [decoded.userId]
-    );
-    
-    if (result.rows.length === 0) {
-      throw new Error('User not found');
+@Flow Actions {
+  secure_login: async function (credentials) {
+    const { email, password } = credentials || {};
+    if (!email || !password) {
+      throw new Error('Email and password are required');
     }
-    
-    return result.rows[0];
-  } catch (error) {
-    throw new Error('Invalid or expired token');
+
+    const result = await DB.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+    if (result.rows.length === 0) throw new Error('Invalid credentials');
+
+    const user = result.rows[0];
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) throw new Error('Invalid credentials');
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    const { password_hash, ...userWithoutPassword } = user;
+    return { token, user: userWithoutPassword };
+  },
+
+  secure_register: async function (userData) {
+    const { email, password, name } = userData || {};
+    if (!email || !password) throw new Error('Email and password are required');
+
+    const existing = await DB.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    if (existing.rows.length > 0) throw new Error('User already exists');
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const result = await DB.query(
+      'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
+      [email, password_hash, name]
+    );
+
+    const user = result.rows[0];
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    return { token, user };
+  },
+
+  secure_getCurrentUser: async function (token) {
+    if (!token) throw new Error('No token provided');
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const result = await DB.query(
+        'SELECT id, email, name, created_at FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+      if (result.rows.length === 0) throw new Error('User not found');
+      return result.rows[0];
+    } catch (error) {
+      throw new Error('Invalid or expired token');
+    }
+  },
+
+  secure_logout: async function () {
+    // JWT is stateless, so logout is handled client-side
+    // For token blacklisting, use Redis or database
+    return { success: true };
   }
 }
-
-async function secure_logout(token) {
-  // JWT is stateless, so logout is handled client-side
-  // For token blacklisting, use Redis or database
-  return { success: true };
-}
-
-module.exports = {
-  secure_login,
-  secure_register,
-  secure_getCurrentUser,
-  secure_logout
-};
 ```
 
 ### 2. Use in Pages
 
 ```atom
 // app/login.atom
-import { secure_login } from './_actions/auth';
-
-@Flow Actions {
-  secure_login: secure_login
-};
+import { secure_login } from './_actions/auth.atom';
 
 @View {
   const [email, setEmail] = useState('');
@@ -169,7 +129,7 @@ import { secure_login } from './_actions/auth';
     setLoading(true);
     
     try {
-      const result = await Actions.secure_login({ email, password });
+      const result = await secure_login({ email, password });
       
       // Store token
       localStorage.setItem('token', result.token);
@@ -222,11 +182,7 @@ Create a middleware or use a hook:
 
 ```atom
 // app/dashboard/home.atom
-import { secure_getCurrentUser } from './_actions/auth';
-
-@Flow Actions {
-  secure_getCurrentUser: secure_getCurrentUser
-};
+import { secure_getCurrentUser } from './_actions/auth.atom';
 
 @View {
   const [user, setUser] = useState(null);
@@ -240,7 +196,7 @@ import { secure_getCurrentUser } from './_actions/auth';
       return;
     }
     
-    Actions.secure_getCurrentUser(token)
+    secure_getCurrentUser(token)
       .then(setUser)
       .catch(() => {
         localStorage.removeItem('token');
