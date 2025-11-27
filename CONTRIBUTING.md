@@ -49,7 +49,8 @@ npm run typecheck
 ## CI/CD Pipeline
 
 ### Automated Checks
-- ✅ **Tests**: Run on every PR and push
+- ✅ **Tests (18.x)**: Tests on Node.js 18.x
+- ✅ **Tests (20.x)**: Tests on Node.js 20.x
 - ✅ **Build**: Ensures project compiles successfully
 - ✅ **Linting**: Code quality checks
 - ✅ **TypeScript**: Type safety verification
