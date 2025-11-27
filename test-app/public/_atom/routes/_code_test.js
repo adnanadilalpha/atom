@@ -1,5 +1,5 @@
 
-// Route: /home
+// Route: /code-test
 
 // SSR Hooks (no-op stubs for server-side rendering)
 function useState(initialValue) { return [initialValue, () => {}]; }
@@ -354,59 +354,85 @@ const Image = (props) => {
 };
 
 const Actions = {};
-Actions.celebrate = function () {
-  // Run a little celebration animation
-  confetti({
-    particleCount: 50,
-    spread: 70,
-    origin: {
-      y: 0.6
-    }
-  });
-};
 
 const PageContent = (props) => { 
     // Ensure props is always an object
     props = props || {};
-    const [count, setCount] = useState(0);
-
-  return div([
+    return div([
     div([
-      Image({ 
-        src: "/atom-icon.svg", 
-        alt: "ATOM Logo", 
-        width: 100, 
-        height: 100,
-        className: "mb-6 drop-shadow-lg" 
-      }),
-      h1("ATOM V2", { className: "text-6xl font-black text-gray-800 mb-4 tracking-tight" }),
-      p("Build faster. Ship sooner.", { className: "text-xl text-gray-500 mb-8 font-medium" }),
-      
-      button("Click Me (" + count + ")", {
-        className: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
-        onclick: () => {
-            setCount(count + 1);
-            Actions.celebrate();
-        }
-      }),
+      h1("CodeBlock Component Test", { className: "text-4xl font-bold mb-8" }),
 
-      // CodeBlock example
-      div([
-        h2("Code Example", { className: "text-2xl font-bold text-gray-800 mb-4 mt-12" }),
-        CodeBlock({
-          title: "Example",
-          code: `const [count, setCount] = useState(0);
+      h2("Basic JavaScript Example", { className: "text-2xl font-bold mb-4" }),
+      CodeBlock({
+        code: `const [count, setCount] = useState(0);
+
+function handleClick() {
+  setCount(count + 1);
+  console.log('Count:', count);
+}
 
 return div([
-  h1("Hello World"),
-  button("Click: " + count, {
-    onclick: () => setCount(count + 1)
+  h1('Counter: ' + count),
+  button('Increment', {
+    onclick: handleClick
   })
 ]);`,
-          language: "javascript"
-        })
-      ], { className: "max-w-4xl mx-auto mt-12" })
-    ], { className: "flex flex-col items-center justify-center py-20 min-h-[80vh]" })
+        language: "javascript"
+      }),
+
+      h2("Python Example", { className: "text-2xl font-bold mb-4 mt-8" }),
+      CodeBlock({
+        title: "Python Function",
+        code: `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+# Calculate first 10 fibonacci numbers
+for i in range(10):
+    print(f"F({i}) = {fibonacci(i)}")`,
+        language: "python"
+      }),
+
+      h2("HTML Example", { className: "text-2xl font-bold mb-4 mt-8" }),
+      CodeBlock({
+        code: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ATOM App</title>
+</head>
+<body>
+  <div id="app">
+    <h1>Hello World</h1>
+    <p>This is an ATOM application.</p>
+  </div>
+</body>
+</html>`,
+        language: "html"
+      }),
+
+      h2("CSS Example", { className: "text-2xl font-bold mb-4 mt-8" }),
+      CodeBlock({
+        code: `.code-block {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  overflow-x: auto;
+}
+
+.code-block-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}`,
+        language: "css"
+      })
+
+    ], { className: "max-w-4xl mx-auto py-12 px-8" })
   ]); 
 };
 export default (props) => {

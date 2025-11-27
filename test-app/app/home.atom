@@ -35,13 +35,30 @@ import confetti from 'canvas-confetti';
       h1("ATOM V2", { className: "text-6xl font-black text-gray-800 mb-4 tracking-tight" }),
       p("Build faster. Ship sooner.", { className: "text-xl text-gray-500 mb-8 font-medium" }),
       
-      button("Click Me (" + count + ")", { 
+      button("Click Me (" + count + ")", {
         className: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
         onclick: () => {
             setCount(count + 1);
             Actions.celebrate();
-        } 
-      })
+        }
+      }),
+
+      // CodeBlock example
+      div([
+        h2("Code Example", { className: "text-2xl font-bold text-gray-800 mb-4 mt-12" }),
+        CodeBlock({
+          title: "Example",
+          code: `const [count, setCount] = useState(0);
+
+return div([
+  h1("Hello World"),
+  button("Click: " + count, {
+    onclick: () => setCount(count + 1)
+  })
+]);`,
+          language: "javascript"
+        })
+      ], { className: "max-w-4xl mx-auto mt-12" })
     ], { className: "flex flex-col items-center justify-center py-20 min-h-[80vh]" })
   ]);
 }

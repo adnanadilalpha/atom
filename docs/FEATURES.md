@@ -126,6 +126,24 @@
 - Server-side caches have size limits
 - Automatic cleanup of old entries
 
+### 13. CodeBlock Component with Syntax Highlighting ✅ **NEW**
+- **Feature:** Built-in CodeBlock component for displaying code with syntax highlighting
+- **Supported Languages:** JavaScript, TypeScript, Python, HTML, CSS, and more
+- **Features:**
+  - Language badges and titles
+  - Dark theme with monospace fonts
+  - Line numbers support
+  - Responsive design
+- **Usage:**
+  ```atom
+  CodeBlock({
+    code: `const greeting = "Hello World!";`,
+    language: "javascript",
+    title: "Example Code"
+  })
+  ```
+- **Note:** Syntax highlighting is applied at build time for optimal performance
+
 ## 🚀 Coming Soon
 
 - Performance profiling tools
