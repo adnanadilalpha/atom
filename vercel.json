@@ -5,6 +5,9 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/_atom/ws",
       "dest": "/api/atom-server.js"
     },
@@ -18,7 +21,8 @@
   },
   "functions": {
     "api/atom-server.js": {
-      "maxDuration": 10
+      "maxDuration": 10,
+      "includeFiles": "public/**/*"
     }
   }
 }

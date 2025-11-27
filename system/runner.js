@@ -186,7 +186,12 @@ app.get('/_atom/image', async (req, res) => {
     
     try {
         const imagePath = path.join(PUBLIC_DIR, url);
-        if (!fs.existsSync(imagePath)) return res.status(404).send("Not found");
+        if (!fs.existsSync(imagePath)) {
+            // Fallback for Vercel/Serverless: if file not found in function, 
+            // redirect to static URL to let CDN serve it unoptimized
+            if (IS_DEV) console.log(`⚠️  Image not found on disk: ${imagePath}, redirecting to ${url}`);
+            return res.redirect(url); 
+        }
         if (!sharp) {
             // Fallback: serve original if sharp unavailable
             if (IS_DEV) console.log(`⚠️  Sharp not available, serving original for: ${url}`);
@@ -527,7 +532,8 @@ app.get(/(.*)/, async (req, res) => {
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
             // Include CSS link tag for better SSR and performance
-            const cssLinkTag = fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css'))
+            // Always include in production/Vercel to ensure it loads even if file check fails
+            const cssLinkTag = (USE_STATIC_BUNDLE || fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css')))
                 ? '<link rel="stylesheet" href="/_atom/styles.css" data-atom-css>'
                 : '';
 
@@ -566,7 +572,7 @@ app.get(/(.*)/, async (req, res) => {
                 ? '<script defer src="/_atom/client.js"></script>'
                 : '<script src="/bundle.js"></script>';
             // Include CSS link tag for fallback HTML as well
-            const cssLinkTag = fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css'))
+            const cssLinkTag = (USE_STATIC_BUNDLE || fs.existsSync(path.join(PUBLIC_DIR, '_atom', 'styles.css')))
                 ? '<link rel="stylesheet" href="/_atom/styles.css" data-atom-css>'
                 : '';
 

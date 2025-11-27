@@ -17,6 +17,7 @@ system_locked/
 # User application code (NOT framework code)
 app/
 public/
+test-app/
 
 # Development files
 .vscode/

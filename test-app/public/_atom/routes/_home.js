@@ -306,7 +306,7 @@ const Image = (props) => {
 
 const Actions = {};
 Actions.celebrate = function () {
-  // Limit confetti to prevent memory issues
+  // Run a little celebration animation
   confetti({
     particleCount: 50,
     spread: 70,
@@ -328,19 +328,19 @@ const PageContent = (props) => {
         alt: "ATOM Logo", 
         width: 100, 
         height: 100,
-        className: "mb-6" 
+        className: "mb-6 drop-shadow-lg" 
       }),
-      h1("ATOM V20", { className: "text-6xl font-black text-gray-800 mb-4" }),
-      p("Instant Reload & Zero Load", { className: "text-xl text-gray-500 mb-8" }),
+      h1("ATOM V2", { className: "text-6xl font-black text-gray-800 mb-4 tracking-tight" }),
+      p("Build faster. Ship sooner.", { className: "text-xl text-gray-500 mb-8 font-medium" }),
       
-      button("Click (" + count + ")", { 
-        className: "bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg",
+      button("Click Me (" + count + ")", { 
+        className: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
         onclick: () => {
             setCount(count + 1);
             Actions.celebrate();
         } 
       })
-    ], { className: "flex flex-col items-center justify-center py-20" })
+    ], { className: "flex flex-col items-center justify-center py-20 min-h-[80vh]" })
   ]); 
 };
 export default (props) => {

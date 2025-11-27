@@ -1,6 +1,6 @@
 {
   "name": "atom-framework",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "A revolutionary, compiler-driven, full-stack framework for maximum performance and developer simplicity.",
   "main": "system/cli.js",
   "bin": {
@@ -57,6 +57,7 @@
     "@babel/generator": "^7.23.0",
     "@babel/parser": "^7.23.0",
     "@babel/traverse": "^7.23.0",
+    "atom-framework": "^1.5.8",
     "autoprefixer": "^10.4.17",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
@@ -82,5 +83,8 @@
       "node18-macos-arm64"
     ],
     "outputPath": "."
+  },
+  "devDependencies": {
+    "canvas-confetti": "^1.9.4"
   }
 }

@@ -23,6 +23,10 @@ function generateVercelConfig(projectPath) {
         // Don't set outputDirectory - let Vercel serve from public/ automatically
         // Static files in public/ are served before routing rules
         routes: [
+            // Ensure filesystem routes (static assets) are checked first
+            {
+                "handle": "filesystem"
+            },
             // WebSocket endpoint - must come before catch-all
             {
                 src: "/_atom/ws",
@@ -51,7 +55,8 @@ function generateVercelConfig(projectPath) {
         },
         functions: {
             "api/atom-server.js": {
-                maxDuration: 10
+                maxDuration: 10,
+                includeFiles: "public/**/*"
             }
         }
     };
